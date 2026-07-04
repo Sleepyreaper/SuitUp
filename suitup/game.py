@@ -571,7 +571,8 @@ class Game:
 
     # ---- serialization -------------------------------------------------------
     def _tile_json(self, t: Tile) -> dict:
-        return {"id": t.identifier(), "name": t.display_name(), "joker": is_joker(t)}
+        return {"id": t.identifier(), "name": t.display_name(),
+                "joker": is_joker(t), "flower": is_flower(t)}
 
     def snapshot(self) -> dict:
         me = self.players[self.human_index]

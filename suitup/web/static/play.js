@@ -5,7 +5,7 @@
    stateful /api/game/* endpoints. Dependency-free vanilla JS. */
 (function () {
   const T = window.SUITUP_TUTORIAL || { contextual: {}, glossary: {}, intro: {} };
-  const PLAY = { id: null, snap: null, selected: [], coach: true, level: "mixed" };
+  const PLAY = { id: null, snap: null, selected: [], coach: true, guided: true, level: "mixed" };
 
   const LEVELS = {
     easy: [1, 1, 1], mixed: [1, 2, 3], hard: [3, 3, 3],
@@ -68,6 +68,8 @@
             <option value="hard">Hard — 3 sharp bots</option>
           </select>
         </label>
+        <label class="setup-row"><input type="checkbox" id="guideChk" checked>
+          <strong>Guided walkthrough</strong> — walk me through every step (best for your first game)</label>
         <label class="setup-row"><input type="checkbox" id="coachChk" checked>
           Show the Coach overlay (teaches terms as you play)</label>
         <button id="newGameBtn" class="btn btn-primary">Deal &amp; Start</button>
@@ -78,6 +80,7 @@
     host.querySelector("#newGameBtn").onclick = async () => {
       PLAY.level = host.querySelector("#lvl").value;
       PLAY.coach = host.querySelector("#coachChk").checked;
+      PLAY.guided = host.querySelector("#guideChk").checked;
       const data = await post("/api/game/new", { ai_levels: LEVELS[PLAY.level] });
       PLAY.id = data.game_id;
       PLAY.snap = data.state;
@@ -89,16 +92,21 @@
   /* ---------- main table render ---------- */
   function draw(host) {
     const s = PLAY.snap;
+    const step = guideStep(s);
+    PLAY._step = step;
+    PLAY._guideIds = new Set((step && step.tiles) || []);
     host.innerHTML = `
       <div class="table-top">
         <div class="tbl-info">
           <strong>Hand ${s.hand_number}</strong> · Dealer ${esc(s.dealer)} · Target ${s.target_score} pts
         </div>
         <div class="tbl-actions">
+          <button id="guideToggle" class="btn btn-ghost">${PLAY.guided ? "Guidance: ON" : "Guidance: off"}</button>
           <button id="coachToggle" class="btn btn-ghost">${PLAY.coach ? "Hide" : "Show"} Coach</button>
           <button id="quitBtn" class="btn btn-ghost">New Game</button>
         </div>
       </div>
+      ${PLAY.guided && step ? guideBannerHTML(step) : ""}
       <div class="mj-wrap">
         <div class="mj-table">
           <div class="seat-slot slot-top">${oppPanel(POS(s).top, "top")}</div>
@@ -117,6 +125,96 @@
       <div class="action-bar" id="actionBar">${actionHTML(s)}</div>
       ${logHTML(s)}`;
     wire(host);
+  }
+
+  /* ---------- guided walkthrough ---------- */
+  function isFlowerId(id) { return String(id).indexOf("flower") === 0; }
+
+  function recommendedPass(s) {
+    const dead = ((s.hint && s.hint.deadwood) || [])
+      .filter((t) => !t.joker && !t.flower && !isFlowerId(t.id)).map((t) => t.id);
+    if (dead.length >= 3) return dead.slice(0, 3);
+    const extra = s.you.concealed
+      .filter((t) => !t.joker && !t.flower && !isFlowerId(t.id) && dead.indexOf(t.id) < 0)
+      .map((t) => t.id);
+    return dead.concat(extra).slice(0, 3);
+  }
+
+  function recommendedDiscard(s) {
+    const flower = s.you.concealed.find((t) => t.flower || isFlowerId(t.id));
+    if (flower) return flower.id;                          // flowers rarely help — shed first
+    const dead = (s.hint && s.hint.deadwood) || [];
+    if (dead.length) return dead[0].id;
+    const nonJ = s.you.concealed.filter((t) => !t.joker);
+    return (nonJ[0] || s.you.concealed[0]).id;
+  }
+
+  function guideStep(s) {
+    if (!PLAY.guided) return null;
+    if (s.phase === "charleston" && s.charleston) {
+      const tiles = recommendedPass(s);
+      return { do: `Pass 3 tiles to your ${s.charleston.direction.toUpperCase()}.`,
+        why: "The highlighted tiles help your hand the least. Click all 3 (or use “Do it for me”), then Pass. Never pass Jokers or Flowers.",
+        tiles, btn: "#passBtn", act: "pass" };
+    }
+    if (s.phase === "charleston" && s.charleston_second_offered) {
+      return { do: `Click “Start playing”.`,
+        why: "The first Charleston is done. New players usually skip the optional second round.",
+        btn: "#secondNo", act: "click" };
+    }
+    if (s.phase === "play" && s.pending_calls && s.pending_calls.length) {
+      if (s.pending_calls.indexOf("win") >= 0)
+        return { do: `You can WIN — click “Declare Mah Jongg!”`, btn: ".callBtn.btn-win", act: "click" };
+      return { do: `While you're learning, click “Pass”.`,
+        why: "You could call this tile to expose a group, but that reveals part of your hand and locks you in. Passing keeps you flexible.",
+        btn: "#passCall", act: "click" };
+    }
+    if (s.phase === "play" && s.your_turn && s.sub === "draw") {
+      return { do: `Click “Draw a tile”.`,
+        why: "Your turn always starts by drawing one tile from the wall.",
+        btn: "#drawBtn", act: "click" };
+    }
+    if (s.phase === "play" && s.your_turn && s.sub === "discard") {
+      if (PLAY._canWin)
+        return { do: `Your hand is complete — click “Declare Mah Jongg”!`, btn: "#declareBtn", act: "click" };
+      const rec = recommendedDiscard(s);
+      return { do: `Discard the highlighted tile to end your turn.`,
+        why: `It's your least useful tile for your best hand${s.hint ? " (" + s.hint.target + ")" : ""}. Click it, then Discard — you'll be back to 13 tiles.`,
+        tiles: rec ? [rec] : [], btn: "#discardBtn", act: "discard", one: rec };
+    }
+    if (s.phase === "hand_over")
+      return { do: `Hand over — click “Deal next hand” to keep practicing.`, btn: "#nextHand", act: "click" };
+    if (s.phase === "game_over")
+      return { do: `Game over! Start a new game whenever you like.`, btn: "#quitBtn2", act: "click" };
+    return { do: `Watch the other players draw and discard — your turn is coming.`, wait: true };
+  }
+
+  function guideBannerHTML(step) {
+    const doBtn = step.wait ? "" : `<button id="guideDo" class="btn btn-primary">✨ Do it for me</button>`;
+    return `<div class="guide-banner">
+      <div class="guide-lead">👉 Do this now</div>
+      <div class="guide-text"><strong>${esc(step.do)}</strong>${step.why ? `<p>${esc(step.why)}</p>` : ""}</div>
+      <div class="guide-btns">${doBtn}<button id="guideOff" class="btn btn-ghost">Turn off guidance</button></div>
+    </div>`;
+  }
+
+  async function doGuided(host) {
+    const step = PLAY._step;
+    if (!step) return;
+    if (step.act === "pass") {
+      PLAY.selected = (step.tiles || []).slice(0, 3);
+      draw(host);
+      const r = await act(`/api/game/${PLAY.id}/charleston`, { tile_ids: PLAY.selected });
+      if (!correct(r)) PLAY.selected = [];
+      draw(host);
+    } else if (step.act === "discard") {
+      const r = await act(`/api/game/${PLAY.id}/discard`, { tile_id: step.one });
+      if (!correct(r)) { PLAY.selected = []; PLAY._canWin = false; PLAY._justDrew = null; }
+      draw(host);
+    } else if (step.act === "click" && step.btn) {
+      const el = host.querySelector(step.btn);
+      if (el) el.click();
+    }
   }
 
   const SEAT_ORDER = ["East", "South", "West", "North"];
@@ -139,6 +237,7 @@
     if (opts.drew) cls.push("drew");
     if (opts.fresh) cls.push("enter");
     if (opts.joker || t.joker) cls.push("joker");
+    if (PLAY._guideIds && PLAY._guideIds.has(t.id)) cls.push("guide");
     return `<span class="${cls.join(" ")}" data-id="${esc(t.id)}" title="${esc(t.name)}">${t.svg || esc(t.name)}</span>`;
   }
 
@@ -375,9 +474,18 @@
     const on = (id, fn) => { const e = q(id); if (e) e.onclick = fn; };
 
     on("#coachToggle", () => { PLAY.coach = !PLAY.coach; draw(host); });
+    on("#guideToggle", () => { PLAY.guided = !PLAY.guided; draw(host); });
+    on("#guideOff", () => { PLAY.guided = false; draw(host); });
+    on("#guideDo", () => doGuided(host));
     const quit = () => { PLAY.id = null; PLAY.selected = []; PLAY._correction = null; renderPlay(); };
     on("#quitBtn", quit); on("#quitBtn2", quit);
     on("#cxClose", () => { PLAY._correction = null; draw(host); });
+
+    // guided: glow the recommended action button
+    if (PLAY.guided && PLAY._step && PLAY._step.btn) {
+      const gb = host.querySelector(PLAY._step.btn);
+      if (gb) gb.classList.add("guide-btn");
+    }
 
     // tile selection
     if (canSelectTiles(s)) {
