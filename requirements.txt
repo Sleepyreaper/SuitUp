@@ -1,0 +1,30 @@
+Flask==3.0.3
+Werkzeug==3.0.4
+```
+
+### Dockerfile
+```dockerfile
+# SuitUp - offline, locally-runnable American Mah Jongg teaching app
+# Single-container birdwatcher-style Flask pattern per docs/architecture.md
+
+FROM python:3.11-slim
+
+# Keep Python output unbuffered so logs show up immediately in `docker logs`,
+# and prevent .pyc file clutter inside the image.
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /app
+
+# Install dependencies first for better layer caching.
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application source.
+COPY . .
+
+# SuitUp is served at http://localhost:8092 per the non-negotiable product contract.
+EXPOSE 8092
+
+# Run the Flask app as a module so suitup/ stays a proper importable package.
+CMD ["python3", "-m", "suitup.web.app"]
