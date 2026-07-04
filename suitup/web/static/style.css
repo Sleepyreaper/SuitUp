@@ -1,0 +1,108 @@
+:root {
+  --green: #0f5132;
+  --green-light: #157347;
+  --felt: #12633c;
+  --cream: #f6efe0;
+  --ink: #1c2733;
+  --muted: #5a6b7b;
+  --gold: #c8952b;
+  --card: #ffffff;
+  --line: #e3dccb;
+  --shadow: 0 2px 10px rgba(0,0,0,.08);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ink);
+  background: #f3f1ea;
+  line-height: 1.55;
+}
+
+/* Header + nav */
+.topbar {
+  background: linear-gradient(135deg, var(--green), var(--green-light));
+  color: #fff;
+  padding: 18px 22px 0;
+  box-shadow: var(--shadow);
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand h1 { margin: 0; font-size: 1.7rem; letter-spacing: .5px; }
+.brand .logo { font-size: 2.4rem; }
+.tagline { margin: 2px 0 0; opacity: .9; font-size: .9rem; }
+.nav { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 14px; }
+.nav button {
+  background: transparent; border: none; color: #dfeee6;
+  padding: 10px 16px; font-size: .95rem; cursor: pointer;
+  border-radius: 8px 8px 0 0; border-bottom: 3px solid transparent;
+}
+.nav button:hover { background: rgba(255,255,255,.12); color: #fff; }
+.nav button.active { background: #f3f1ea; color: var(--green); font-weight: 600; border-bottom-color: var(--gold); }
+
+/* Layout */
+.view { max-width: 1000px; margin: 0 auto; padding: 26px 22px 60px; }
+.loading { color: var(--muted); }
+.section-title { color: var(--green); margin: 0 0 6px; }
+.lead { color: var(--muted); margin-top: 0; }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 20px 22px; margin: 16px 0; box-shadow: var(--shadow);
+}
+.card h3 { margin-top: 0; color: var(--green); }
+.pill { display: inline-block; background: var(--green); color: #fff;
+  border-radius: 999px; padding: 2px 10px; font-size: .78rem; margin-left: 8px; }
+.pill.optional { background: var(--muted); }
+.pill.gold { background: var(--gold); }
+.btn {
+  background: var(--green); color: #fff; border: none; border-radius: 8px;
+  padding: 10px 18px; font-size: .95rem; cursor: pointer; font-weight: 600;
+}
+.btn:hover { background: var(--green-light); }
+.btn.secondary { background: #fff; color: var(--green); border: 1px solid var(--green); }
+
+/* Tiles */
+.tile {
+  width: 62px; height: 87px; display: inline-flex; align-items: center;
+  justify-content: center; margin: 4px; vertical-align: middle;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.2));
+}
+.tile svg { width: 100%; height: 100%; display: block; }
+.tile.small { width: 46px; height: 64px; }
+.tile.selectable { cursor: pointer; border-radius: 8px; transition: transform .08s; }
+.tile.selectable:hover { transform: translateY(-4px); }
+.tile.selected { outline: 3px solid var(--gold); outline-offset: 1px; border-radius: 8px; }
+.tile-group { margin: 6px 0 14px; }
+.tile-group h4 { margin: 8px 0 4px; color: var(--muted); font-size: .95rem;
+  text-transform: uppercase; letter-spacing: .5px; }
+.tile-name { display: block; text-align: center; font-size: .72rem; color: var(--muted); }
+.tile-cell { display: inline-flex; flex-direction: column; align-items: center; width: 74px; }
+
+/* Table / hands */
+.felt { background: var(--felt); border-radius: 14px; padding: 18px; color: #fff; margin: 14px 0; }
+.seat { background: rgba(0,0,0,.16); border-radius: 10px; padding: 10px 12px; margin: 10px 0; }
+.seat.dealer { outline: 2px solid var(--gold); }
+.seat h4 { margin: 0 0 6px; display: flex; align-items: center; gap: 8px; }
+.dice { font-size: 1.4rem; letter-spacing: 4px; }
+.hand-row { display: flex; flex-wrap: wrap; }
+
+/* Curriculum */
+.unit { border-left: 4px solid var(--gold); padding-left: 16px; margin: 22px 0; }
+.lesson { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px 18px; margin: 10px 0; }
+.lesson h4 { margin: 0 0 4px; color: var(--green); }
+.lesson .objective { color: var(--muted); font-style: italic; margin: 4px 0 8px; }
+.lesson ol { margin: 6px 0 0; padding-left: 20px; }
+.lesson li { margin: 4px 0; }
+
+/* Steps (charleston) */
+.step { display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.step:last-child { border-bottom: none; }
+.step .num { background: var(--green); color: #fff; width: 30px; height: 30px; flex: 0 0 30px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.arrow { font-size: 1.3rem; color: var(--gold); margin-right: 6px; }
+
+.result-good { color: var(--green-light); font-weight: 600; }
+.result-bad { color: #b02a37; font-weight: 600; }
+.note { background: #fbf6e9; border: 1px solid #ecd9a8; border-radius: 8px; padding: 10px 14px; margin: 10px 0; }
+.rules dt { font-weight: 700; color: var(--green); margin-top: 12px; }
+.rules dd { margin: 2px 0 0; color: var(--ink); }

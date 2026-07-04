@@ -1,0 +1,22 @@
+# SuitUp — American Mah Jongg teaching app.
+# Self-contained: one Flask container, no databases, no cloud, fully offline.
+# Dockge-friendly: drop this stack folder in your Dockge stacks dir and start it.
+
+services:
+  suitup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: suitup:local
+    container_name: suitup
+    ports:
+      - "8092:8092"          # open http://<server-ip>:8092
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8092/healthz').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

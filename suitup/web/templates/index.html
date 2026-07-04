@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ app_name }} — Learn American Mah Jongg</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">🀄</span>
+      <div>
+        <h1>SuitUp</h1>
+        <p class="tagline">Learn to play American Mah Jongg — one tile at a time.</p>
+      </div>
+    </div>
+    <nav id="nav" class="nav"></nav>
+  </header>
+
+  <main id="view" class="view"><p class="loading">Shuffling the tiles…</p></main>
+
+  <footer class="footer">
+    <p>SuitUp teaches American Mah Jongg mechanics with original materials. It does
+       <strong>not</strong> reproduce the NMJL card — use your own current card for scored play.</p>
+  </footer>
+
+  <!-- Teaching content authored by the team (global objects) -->
+  <script src="/static/curriculum.js"></script>
+  <script src="/static/rules_reference.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
