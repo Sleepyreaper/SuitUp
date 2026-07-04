@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from suitup.tiles import build_tile_set, is_joker
 from suitup.hands import (matches_hand, is_winning, hand_by_id, best_assessment,
-                          assess_hand, WINNING_HANDS)
+                          assess_hand, WINNING_HANDS, AI_TARGET_HANDS)
 from suitup.scoring import score_win
 from suitup.game import Game
 
@@ -21,8 +21,60 @@ def _by_ident():
 
 def test_all_winning_hands_total_14_and_have_no_runs():
     for h in WINNING_HANDS:
+        if h.fixed is not None:
+            assert sum(n for _, n in h.fixed) == 14, h.hand_id
+            continue
         assert sum(h.group_sizes) == 14, h.hand_id
-        assert all(s in (2, 3, 4) for s in h.group_sizes), h.hand_id  # pair/pung/kong only
+        assert all(s in (1, 2, 3, 4, 5) for s in h.group_sizes), h.hand_id  # no sequences
+
+
+def test_double_quint_needs_jokers():
+    b = _by_ident()
+    jok = b["joker"]
+    # two quints (4 naturals + 1 joker each) + a kong
+    hand = (b["dots_1"][:4] + [jok[0]] + b["bams_2"][:4] + [jok[1]] + b["craks_3"][:4])
+    assert matches_hand(hand, hand_by_id("double_quint"))
+
+
+def test_news_soap_is_exact_tiles_and_rejects_jokers():
+    b = _by_ident()
+    good = (b["wind_north"][:1] + b["wind_east"][:1] + b["wind_west"][:1] + b["wind_south"][:1]
+            + b["dragon_red"][:2] + b["dragon_green"][:2] + b["dragon_white"][:2]
+            + b["dots_2"][:2] + b["dots_6"][:2])
+    assert matches_hand(good, hand_by_id("news_soap"))
+    with_joker = (b["wind_north"][:1] + b["wind_east"][:1] + b["wind_west"][:1] + b["wind_south"][:1]
+                  + b["dragon_red"][:1] + b["joker"][:1] + b["dragon_green"][:2] + b["dragon_white"][:2]
+                  + b["dots_2"][:2] + b["dots_6"][:2])
+    assert not matches_hand(with_joker, hand_by_id("news_soap"))     # no jokers allowed
+    wrong = (b["wind_north"][:2] + b["wind_east"][:1] + b["wind_west"][:1]
+             + b["dragon_red"][:2] + b["dragon_green"][:2] + b["dragon_white"][:2]
+             + b["dots_2"][:2] + b["dots_6"][:2])
+    assert not matches_hand(wrong, hand_by_id("news_soap"))          # missing South
+
+
+def test_ai_target_hands_exclude_no_joker_and_fixed():
+    ids = {h.hand_id for h in AI_TARGET_HANDS}
+    assert "news_soap" not in ids
+    assert "double_quint" in ids and "four_pungs" in ids
+
+
+def test_joker_exchange_swaps_tile_for_joker():
+    from suitup.game import Game, Exposure
+    g = Game.new_game(seed=3)
+    g.phase = "play"; g.turn_index = g.human_index; g.sub = "discard"
+    b = _by_ident()
+    # opponent exposes a pung of 5-Dots using a joker; human holds a real 5-Dot
+    opp = next(p for i, p in enumerate(g.players) if i != g.human_index)
+    opp.exposures = [Exposure("pung", [b["dots_5"][0], b["dots_5"][1], b["joker"][0]])]
+    me = g.players[g.human_index]
+    me.concealed = [b["dots_5"][2]] + b["bams_1"][:12]
+    opts = g._exchange_options()
+    assert opts and opts[0]["identity"] == "dots_5"
+    r = g.human_exchange_joker(opts[0]["seat_index"], opts[0]["exposure_index"], opts[0]["tile_id"])
+    assert r["ok"]
+    assert any(is_joker(t) for t in me.concealed)                    # got the joker
+    assert not any(is_joker(t) for t in opp.exposures[0].tiles)      # exposure now all real
+    assert opp.exposures[0].tiles[2].identifier().startswith("dots_5")
 
 
 def test_four_pungs_and_pair_matches():

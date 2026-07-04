@@ -203,3 +203,8 @@ body {
   .table-layout { flex-direction: column; }
   .coach { flex: 1 1 auto; position: static; width: 100%; }
 }
+.redeem-box { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.redeem-box .btn { display: block; text-align: left; margin: 6px 0; }
+.hand-list { margin: 6px 0; padding-left: 18px; }
+.hand-list li { margin: 8px 0; }
+.hand-list .pill { font-size: .7rem; padding: 1px 7px; }

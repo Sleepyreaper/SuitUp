@@ -254,6 +254,13 @@ def create_app() -> Flask:
     def api_game_pass_call(game_id):
         return _action(game_id, lambda g: g.human_pass_call())
 
+    @app.route("/api/game/<game_id>/exchange-joker", methods=["POST"])
+    def api_game_exchange_joker(game_id):
+        d = request.get_json(silent=True) or {}
+        return _action(game_id, lambda g: g.human_exchange_joker(
+            int(d.get("seat_index", -1)), int(d.get("exposure_index", -1)),
+            d.get("tile_id", "")))
+
     @app.route("/api/game/<game_id>/declare-win", methods=["POST"])
     def api_game_declare_win(game_id):
         return _action(game_id, lambda g: g.human_declare_win())

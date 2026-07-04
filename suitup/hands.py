@@ -28,13 +28,35 @@ class WinningHand:
     single_suit: bool        # all suited tiles must be the SAME suit
     points: int
     teaches: str
+    no_jokers: bool = False  # jokers illegal anywhere (Singles & Pairs hands)
+    # Optional exact-tile spec: a tuple of (tile identity, group size). When set,
+    # the hand requires those SPECIFIC tiles (e.g. NEWS winds), overriding
+    # group_sizes/single_suit. Identities look like "wind_north", "dragon_white".
+    fixed: Optional[Tuple[Tuple[str, int], ...]] = None
 
     def describe(self) -> str:
+        if self.fixed is not None:
+            return " + ".join(f"{_pretty_ident(i)}×{n}" for i, n in self.fixed)
         parts = []
         for s in self.group_sizes:
-            parts.append({2: "Pair", 3: "Pung", 4: "Kong"}.get(s, f"{s}-group"))
+            parts.append({1: "Single", 2: "Pair", 3: "Pung",
+                          4: "Kong", 5: "Quint"}.get(s, f"{s}-group"))
         suit = " (all one suit)" if self.single_suit else ""
-        return " + ".join(parts) + suit
+        nj = " · no jokers" if self.no_jokers else ""
+        return " + ".join(parts) + suit + nj
+
+
+def _pretty_ident(ident: str) -> str:
+    names = {
+        "wind_north": "North", "wind_east": "East", "wind_west": "West",
+        "wind_south": "South", "dragon_red": "Red", "dragon_green": "Green",
+        "dragon_white": "Soap (White)",
+    }
+    if ident in names:
+        return names[ident]
+    suit, _, rank = ident.partition("_")
+    label = {"dots": "Dot", "bams": "Bam", "craks": "Crak"}.get(suit, suit)
+    return f"{rank}-{label}"
 
 
 # Ordered easiest → hardest. Every group_sizes sums to 14.
@@ -51,7 +73,25 @@ WINNING_HANDS: Tuple[WinningHand, ...] = (
     WinningHand("one_suit", "Single-Suit Pungs", "stretch",
                 (3, 3, 3, 3, 2), True, 50,
                 "Four Pungs and a Pair, ALL in one suit (Dots, Bams, or Craks)."),
+    WinningHand("double_quint", "Double Quint", "stretch",
+                (5, 5, 4), False, 60,
+                "Two Quints (five-of-a-kind) and a Kong. A Quint is impossible "
+                "without a Joker — there are only four of each tile."),
+    WinningHand("news_soap", "NEWS & Dragons (Singles & Pairs)", "stretch",
+                (), False, 75,
+                "An original Singles & Pairs hand: the four NEWS winds as singles, "
+                "plus dragon and number pairs (Soap = White Dragon = 0). NO jokers "
+                "allowed anywhere — the hardest, highest-scoring style.",
+                no_jokers=True,
+                fixed=(("wind_north", 1), ("wind_east", 1), ("wind_west", 1),
+                       ("wind_south", 1), ("dragon_red", 2), ("dragon_green", 2),
+                       ("dragon_white", 2), ("dots_2", 2), ("dots_6", 2))),
 )
+
+# The simple AI only targets achievable structural hands; the exact-tile /
+# no-joker hands are advanced practice targets a human can aim for.
+AI_TARGET_HANDS: Tuple[WinningHand, ...] = tuple(
+    h for h in WINNING_HANDS if h.fixed is None and not h.no_jokers)
 
 
 def hand_by_id(hand_id: str) -> Optional[WinningHand]:
@@ -93,14 +133,37 @@ def matches_hand(tiles: List[Tile], hand: WinningHand) -> bool:
     """True if exactly-14 `tiles` complete `hand` (structure + suit + joker rules)."""
     if len(tiles) != HAND_TILES:
         return False
+    jokers = sum(1 for t in tiles if is_joker(t))
+    if hand.no_jokers and jokers > 0:
+        return False
+    if hand.fixed is not None:
+        return _matches_fixed(tiles, hand, jokers)
     if hand.single_suit:
         suits = {suit_of(t) for t in tiles if not is_joker(t) and suit_of(t) is not None}
         honors = any(not is_joker(t) and suit_of(t) is None for t in tiles)
         if honors or len(suits) > 1:             # single-suit hands are suited-only, one suit
             return False
-    jokers = sum(1 for t in tiles if is_joker(t))
     counts: Dict[str, int] = Counter(_identity(t) for t in tiles if not is_joker(t))
     return _can_fill(dict(counts), jokers, sorted(hand.group_sizes, reverse=True))
+
+
+def _matches_fixed(tiles: List[Tile], hand: WinningHand, jokers: int) -> bool:
+    """Match an exact-tile hand: the tiles must partition into the specific
+    (identity, size) groups, honoring joker rules (none for singles/pairs)."""
+    counts: Dict[str, int] = Counter(_identity(t) for t in tiles if not is_joker(t))
+    jok = jokers
+    for ident, size in hand.fixed:
+        have = counts.get(ident, 0)
+        use = min(have, size)
+        counts[ident] = have - use
+        short = size - use
+        if short > 0:
+            if size < 3 or hand.no_jokers:       # singles/pairs (or no-joker hand)
+                return False
+            if short > jok:
+                return False
+            jok -= short
+    return jok == 0 and all(v == 0 for v in counts.values())
 
 
 def winning_hands_for(tiles: List[Tile]) -> List[WinningHand]:
@@ -144,6 +207,9 @@ def assess_hand(tiles: List[Tile], hand: WinningHand) -> HandAssessment:
     jokers = [t for t in tiles if is_joker(t)]
     naturals = [t for t in tiles if not is_joker(t)]
 
+    if hand.fixed is not None:
+        return _assess_fixed(tiles, hand, jokers, naturals)
+
     if hand.single_suit:
         keep_suit = _dominant_suit(naturals)
         usable = [t for t in naturals if suit_of(t) == keep_suit]
@@ -157,7 +223,7 @@ def assess_hand(tiles: List[Tile], hand: WinningHand) -> HandAssessment:
     ranked = sorted(by_ident.items(), key=lambda kv: len(kv[1]), reverse=True)
 
     sizes = sorted(hand.group_sizes, reverse=True)
-    joker_pool = len(jokers)
+    joker_pool = 0 if hand.no_jokers else len(jokers)
     placed = 0
     keep_ids: List[str] = []
     used_idents = set()
@@ -188,7 +254,36 @@ def assess_hand(tiles: List[Tile], hand: WinningHand) -> HandAssessment:
                           keep_ids=keep_ids, deadwood=deadwood, wants=wants)
 
 
-def best_assessment(tiles: List[Tile]) -> HandAssessment:
+def _assess_fixed(tiles, hand, jokers, naturals) -> HandAssessment:
+    counts: Counter = Counter(_identity(t) for t in naturals)
+    joker_pool = 0 if hand.no_jokers else len(jokers)
+    placed = 0
+    keep_ids: List[str] = []
+    used = set()
+    wants: List[Tuple[str, int]] = []
+    for ident, size in hand.fixed:
+        have = counts.get(ident, 0)
+        use = min(have, size)
+        placed += use
+        keep_ids.append(ident)
+        used.add(ident)
+        short = size - use
+        if short > 0 and size >= 3 and not hand.no_jokers:
+            fill = min(short, joker_pool)
+            joker_pool -= fill
+            placed += fill
+            short -= fill
+        if short > 0:
+            wants.append((ident, short))
+    deadwood = [t for t in tiles
+                if (is_joker(t) and hand.no_jokers) or
+                (not is_joker(t) and _identity(t) not in used)]
+    return HandAssessment(hand=hand, placed=placed, needed=HAND_TILES - placed,
+                          keep_ids=keep_ids, deadwood=deadwood, wants=wants)
+
+
+def best_assessment(tiles: List[Tile],
+                    hands: Tuple[WinningHand, ...] = WINNING_HANDS) -> HandAssessment:
     """The target hand these tiles are currently closest to completing."""
-    return max((assess_hand(tiles, h) for h in WINNING_HANDS),
-               key=lambda a: a.placed)
+    return max((assess_hand(tiles, h) for h in hands), key=lambda a: a.placed)
+

@@ -17,8 +17,8 @@ from typing import Dict, List, Optional
 
 from suitup.charleston import charleston_sequence, illegal_pass_tiles
 from suitup.groups import _non_joker_key
-from suitup.hands import (WINNING_HANDS, assess_hand, best_assessment,
-                          matches_hand, winning_hands_for)
+from suitup.hands import (AI_TARGET_HANDS, WINNING_HANDS, assess_hand,
+                          best_assessment, matches_hand, winning_hands_for)
 from suitup.scoring import score_win
 from suitup.tiles import Tile, build_tile_set, is_joker
 
@@ -35,8 +35,17 @@ class Exposure:
     group_type: str          # "pung" | "kong"
     tiles: List[Tile]
 
+    def identity(self) -> Optional[str]:
+        nat = next((t for t in self.tiles if not is_joker(t)), None)
+        return _key(nat) if nat else None
+
+    def joker_count(self) -> int:
+        return sum(1 for t in self.tiles if is_joker(t))
+
     def to_dict(self) -> dict:
         return {"group_type": self.group_type,
+                "identity": self.identity(),
+                "joker_count": self.joker_count(),
                 "tiles": [{"id": t.identifier(), "name": t.display_name(),
                            "joker": is_joker(t)} for t in self.tiles]}
 
@@ -124,7 +133,7 @@ class Game:
         for p in self.players:
             p.concealed.sort(key=lambda t: t.identifier())
             if not p.is_human:
-                p.target_id = best_assessment(p.concealed).hand.hand_id
+                p.target_id = best_assessment(p.concealed, AI_TARGET_HANDS).hand.hand_id
         self.charleston_queue = charleston_sequence(second_charleston=False, courtesy=False)
         self.charleston_second_offered = False
         self.phase = "charleston"
@@ -149,7 +158,7 @@ class Game:
         return (giver + 2) % 4          # across / opposite
 
     def _ai_charleston_pick(self, p: Player) -> List[Tile]:
-        assess = best_assessment(p.concealed)
+        assess = best_assessment(p.concealed, AI_TARGET_HANDS)
         dead = [t for t in assess.deadwood if not is_joker(t)]
         pool = dead + [t for t in p.concealed
                        if not is_joker(t) and t not in dead]
@@ -181,7 +190,7 @@ class Game:
         for p in self.players:
             p.concealed.sort(key=lambda t: t.identifier())
             if not p.is_human:
-                p.target_id = best_assessment(p.concealed).hand.hand_id
+                p.target_id = best_assessment(p.concealed, AI_TARGET_HANDS).hand.hand_id
         self._log(f"Charleston pass {step.order} ({step.direction}) complete.")
         self.charleston_queue.pop(0)
         if not self.charleston_queue and not self.charleston_second_offered:
@@ -288,6 +297,81 @@ class Game:
         self._advance()
         return {"ok": True}
 
+    # ---- play: joker exchange (redemption) -----------------------------------
+    def _exchange_options(self) -> List[dict]:
+        """Joker redemptions the human may do right now: on their turn, before or
+        after drawing, swap a real tile they hold for a joker in ANY exposure
+        (their own or an opponent's)."""
+        if (self.phase != "play" or self.turn_index != self.human_index
+                or self.sub not in ("draw", "discard")):
+            return []
+        me = self.players[self.human_index]
+        opts: List[dict] = []
+        for si, p in enumerate(self.players):
+            for ei, exp in enumerate(p.exposures):
+                if exp.joker_count() <= 0:
+                    continue
+                ident = exp.identity()
+                match = next((t for t in me.concealed
+                              if not is_joker(t) and _key(t) == ident), None)
+                if match:
+                    opts.append({"seat": p.seat, "seat_index": si,
+                                 "exposure_index": ei, "identity": ident,
+                                 "tile_id": match.identifier(),
+                                 "tile_name": match.display_name()})
+        return opts
+
+    def human_exchange_joker(self, seat_index: int, exposure_index: int,
+                             tile_id: str) -> dict:
+        if (self.phase != "play" or self.turn_index != self.human_index
+                or self.sub not in ("draw", "discard")):
+            return {"ok": False, "error": "You can only redeem a joker on your turn."}
+        if not (0 <= seat_index < 4):
+            return {"ok": False, "error": "No such player."}
+        tgt = self.players[seat_index]
+        if not (0 <= exposure_index < len(tgt.exposures)):
+            return {"ok": False, "error": "No such exposure."}
+        exp = tgt.exposures[exposure_index]
+        jpos = next((k for k, t in enumerate(exp.tiles) if is_joker(t)), None)
+        if jpos is None:
+            return {"ok": False, "error": "That group has no joker to redeem."}
+        ident = exp.identity()
+        me = self.players[self.human_index]
+        tile = next((t for t in me.concealed if t.identifier() == tile_id
+                     and not is_joker(t) and _key(t) == ident), None)
+        if tile is None:
+            return {"ok": False, "error": "Give the real tile that matches the group."}
+        joker = exp.tiles[jpos]
+        exp.tiles[jpos] = tile
+        me.concealed.remove(tile)
+        me.concealed.append(joker)
+        me.concealed.sort(key=lambda t: t.identifier())
+        self._log(f"You redeemed a Joker from {tgt.seat}'s {tile.display_name()} group.")
+        return {"ok": True}
+
+    def _ai_reclaim_jokers(self, i: int) -> None:
+        """An AI swaps a spare/deadwood tile for a joker sitting in any exposure —
+        jokers are always worth reclaiming."""
+        p = self.players[i]
+        target = self._ai_target(p)
+        dead = {_key(t) for t in assess_hand(p.concealed, target).deadwood
+                if not is_joker(t)}
+        for sp in self.players:
+            for exp in sp.exposures:
+                if exp.joker_count() <= 0:
+                    continue
+                ident = exp.identity()
+                give = next((t for t in p.concealed if not is_joker(t)
+                             and _key(t) == ident and _key(t) in dead), None)
+                if give:
+                    jpos = next(k for k, t in enumerate(exp.tiles) if is_joker(t))
+                    joker = exp.tiles[jpos]
+                    exp.tiles[jpos] = give
+                    p.concealed.remove(give)
+                    p.concealed.append(joker)
+                    self._log(f"{p.seat} redeemed a Joker from {sp.seat}'s exposure.")
+                    return
+
     # ---- play: claim mechanics -----------------------------------------------
     def _place_discard(self, who: int, tile: Tile) -> None:
         self.discards.append(tile)
@@ -329,7 +413,7 @@ class Game:
     # ---- play: AI ------------------------------------------------------------
     def _ai_target(self, p: Player):
         return next((h for h in WINNING_HANDS if h.hand_id == p.target_id),
-                    best_assessment(p.concealed).hand)
+                    best_assessment(p.concealed, AI_TARGET_HANDS).hand)
 
     def _ai_choose_discard(self, p: Player) -> Tile:
         assess = assess_hand(p.concealed, self._ai_target(p))
@@ -375,6 +459,8 @@ class Game:
         won = self._hand_wins(p.all_tiles())
         if won:
             self._record_win(i, won, self_drawn=True); return
+        if p.level >= 2:
+            self._ai_reclaim_jokers(i)
         tile = self._ai_choose_discard(p)
         p.concealed.remove(tile)
         self._place_discard(i, tile)
@@ -522,6 +608,7 @@ class Game:
                                           and not self.charleston_queue
                                           and self.phase == "charleston"),
             "pending_calls": [c["kind"] for c in self.pending_human_calls],
+            "joker_exchanges": self._exchange_options(),
             "hint": ({"target": assess.hand.name, "target_desc": assess.hand.describe(),
                       "needed": assess.needed, "completeness": assess.completeness,
                       "wants": assess.wants,

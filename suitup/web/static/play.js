@@ -33,7 +33,9 @@
   async function renderPlay() {
     const host = document.getElementById("view");
     if (!PLAY.id) {
-      host.innerHTML = setupHTML();
+      let hands = [];
+      try { hands = (await get("/api/game-hands")).hands || []; } catch (e) { hands = []; }
+      host.innerHTML = setupHTML(hands);
       wireSetup(host);
       return;
     }
@@ -43,14 +45,20 @@
     draw(host);
   }
 
-  function setupHTML() {
+  function setupHTML(hands) {
     const intro = T.intro || { title: "", points: [] };
+    const handRows = (hands || []).map((h) =>
+      `<li><strong>${esc(h.name)}</strong> <span class="pill ${h.difficulty === "intro" ? "" : h.difficulty === "building" ? "gold" : "optional"}">${esc(h.difficulty)}</span> — ${esc(h.structure)} · <em>${h.points} pts</em><br><span class="muted">${esc(h.teaches)}</span></li>`
+    ).join("");
     return `
       <h2 class="section-title">Play — Mah Jongg Simulator 🀄</h2>
       <div class="card">
         <h3>${esc(intro.title)}</h3>
         <ul class="intro-list">${(intro.points || []).map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
       </div>
+      ${handRows ? `<div class="card"><h3>Hands you can win with</h3>
+        <ul class="hand-list">${handRows}</ul>
+        <p class="muted">At a real table you'd match a line on the 2026 NMJL card instead — the mechanics are the same.</p></div>` : ""}
       <div class="card setup-card">
         <h3>Start a new game</h3>
         <label class="setup-row">Opponent difficulty:
@@ -220,12 +228,12 @@
         <button id="passCall" class="btn btn-ghost">Pass</button>`;
     }
     if (s.phase === "play" && s.your_turn && s.sub === "draw") {
-      return `<button id="drawBtn" class="btn btn-primary">Draw a tile</button>`;
+      return `<button id="drawBtn" class="btn btn-primary">Draw a tile</button>${exchangeHTML(s)}`;
     }
     if (s.phase === "play" && s.your_turn && s.sub === "discard") {
       const win = `<button id="declareBtn" class="btn btn-win">Declare Mah Jongg</button>`;
       return `<button id="discardBtn" class="btn btn-primary">Discard selected (${PLAY.selected.length}/1)</button>
-        ${(PLAY._canWin ? win : "")}`;
+        ${(PLAY._canWin ? win : "")}${exchangeHTML(s)}`;
     }
     if (s.phase === "hand_over") {
       return winSummaryHTML(s) + `<button id="nextHand" class="btn btn-primary">Deal next hand</button>`;
@@ -234,6 +242,15 @@
       return winSummaryHTML(s) + finalScoresHTML(s) + `<button id="quitBtn2" class="btn btn-primary">New game</button>`;
     }
     return `<div class="muted">Waiting…</div>`;
+  }
+
+  function exchangeHTML(s) {
+    const ex = s.joker_exchanges || [];
+    if (!ex.length) return "";
+    const btns = ex.map((e, i) =>
+      `<button class="btn btn-ghost redeemBtn" data-i="${i}">♻ Redeem Joker from ${esc(e.seat)} — give your ${esc(e.tile_name)}</button>`
+    ).join("");
+    return `<div class="redeem-box"><div class="hintline">Joker exchange available: swap a real tile you hold for a Joker sitting in an exposure (yours or an opponent's).</div>${btns}</div>`;
   }
 
   function winSummaryHTML(s) {
@@ -351,6 +368,17 @@
     });
     on("#passCall", async () => { await act(`/api/game/${PLAY.id}/pass-call`, {}); draw(host); });
     on("#nextHand", async () => { await act(`/api/game/${PLAY.id}/next-hand`, {}); PLAY.selected = []; draw(host); });
+
+    host.querySelectorAll(".redeemBtn").forEach((el) => {
+      el.onclick = async () => {
+        const e = (PLAY.snap.joker_exchanges || [])[+el.dataset.i];
+        if (!e) return;
+        const r = await act(`/api/game/${PLAY.id}/exchange-joker`,
+          { seat_index: e.seat_index, exposure_index: e.exposure_index, tile_id: e.tile_id });
+        if (r && r.result && r.result.ok === false) flash(host, r.result.error);
+        draw(host);
+      };
+    });
 
     // glossary chips
     host.querySelectorAll(".term-chip").forEach((el) => {
