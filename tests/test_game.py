@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from suitup.tiles import build_tile_set, is_joker
+from suitup.tiles import build_tile_set, is_joker, is_flower
 from suitup.hands import (matches_hand, is_winning, hand_by_id, best_assessment,
                           assess_hand, WINNING_HANDS, AI_TARGET_HANDS)
 from suitup.scoring import score_win
@@ -141,7 +141,31 @@ def test_new_game_deals_correctly():
     assert g.players[g.dealer_index].size() == 14
     assert all(p.size() == 13 for i, p in enumerate(g.players) if i != g.dealer_index)
     total = sum(p.size() for p in g.players) + len(g.wall)
-    assert total == 144
+    assert total == 152                      # full American set incl. 8 Flowers
+
+
+def test_flower_basket_uses_any_flowers_and_soap():
+    b = _by_ident()
+    from suitup.tiles import build_tile_set, is_flower
+    flowers = [t for t in build_tile_set(include_flowers=True) if is_flower(t)]
+    # a Flower Kong is any 4 of the 8 flowers (they're interchangeable)
+    hand = (flowers[:4] + b["dragon_red"][:3] + b["dragon_green"][:3]
+            + b["dragon_white"][:2] + b["wind_east"][:2])
+    assert matches_hand(hand, hand_by_id("flower_basket"))
+    # a different four flowers still works
+    hand2 = (flowers[4:8] + b["dragon_red"][:3] + b["dragon_green"][:3]
+             + b["dragon_white"][:2] + b["wind_east"][:2])
+    assert matches_hand(hand2, hand_by_id("flower_basket"))
+
+
+def test_flowers_cannot_fill_a_number_pung():
+    b = _by_ident()
+    from suitup.tiles import build_tile_set, is_flower
+    flowers = [t for t in build_tile_set(include_flowers=True) if is_flower(t)]
+    # 3 flowers must NOT count as one of the four pungs in a numbers hand
+    hand = (flowers[:3] + b["dots_2"][:3] + b["bams_5"][:3]
+            + b["craks_9"][:3] + b["wind_east"][:2])
+    assert not matches_hand(hand, hand_by_id("four_pungs"))
 
 
 def _auto_play(g, max_steps=3000):
@@ -154,8 +178,9 @@ def _auto_play(g, max_steps=3000):
             if g.current_charleston():
                 me = g.players[g.human_index]
                 a = best_assessment(me.concealed)
-                dead = [t for t in a.deadwood if not is_joker(t)]
-                pool = dead + [t for t in me.concealed if not is_joker(t)]
+                dead = [t for t in a.deadwood if not is_joker(t) and not is_flower(t)]
+                pool = dead + [t for t in me.concealed
+                               if not is_joker(t) and not is_flower(t)]
                 g.submit_charleston([t.identifier() for t in pool[:3]])
             else:
                 g.continue_second_charleston(False)

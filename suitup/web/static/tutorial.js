@@ -98,7 +98,37 @@ window.SUITUP_TUTORIAL = {
       "wrong count makes your hand 'dead'.",
     "Honor tiles": "The Winds (E/S/W/N) and Dragons (Red/Green/White). Not part of any " +
       "number suit.",
+    "Flower": "A bonus tile (there are 8, all interchangeable). Flowers belong to no suit " +
+      "and are used only in hands that call for them. You may NEVER pass a Flower in the " +
+      "Charleston, and a Flower can't help a hand that doesn't use Flowers.",
   },
+
+  /* When a move is rejected, the Coach explains WHY (matched on the error text). */
+  illegal: [
+    { match: "Jokers and Flowers",
+      why: "Jokers and Flowers are special — they can never be passed in the Charleston. " +
+           "Keep them; pass ordinary tiles you don't need instead." },
+    { match: "exactly 3",
+      why: "Every Charleston pass is exactly 3 tiles — no more, no less. Click three tiles, " +
+           "then pass." },
+    { match: "does not complete",
+      why: "Your 14 tiles don't yet match any hand you can win with. Keep drawing and " +
+           "building toward the target in the Coach panel." },
+    { match: "real tile that matches",
+      why: "To redeem a Joker you must give the EXACT tile it's standing in for (same " +
+           "number/suit or honor). You don't hold that tile." },
+    { match: "redeem a joker on your turn",
+      why: "You can only redeem a Joker on your own turn, before or after you draw." },
+    { match: "call",
+      why: "You can only call a discard to complete a Pung or Kong you already hold most " +
+           "of — or the final tile for Mah Jongg. You can't call for a pair or single." },
+    { match: "not yours to draw",
+      why: "It isn't your turn yet. Watch the opponents draw and discard — your turn is " +
+           "coming around." },
+    { match: "cannot discard",
+      why: "You can only discard right after you've drawn, on your turn, and you must end " +
+           "the turn holding 13 tiles." },
+  ],
 
   /* One-time 'read me first' shown when you open Play for the first time. */
   intro: {

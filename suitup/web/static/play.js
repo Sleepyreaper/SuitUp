@@ -92,25 +92,42 @@
     host.innerHTML = `
       <div class="table-top">
         <div class="tbl-info">
-          <strong>Hand ${s.hand_number}</strong> · Dealer: ${esc(s.dealer)} ·
-          Wall: ${s.wall_remaining} tiles · Target: ${s.target_score} pts
+          <strong>Hand ${s.hand_number}</strong> · Dealer ${esc(s.dealer)} · Target ${s.target_score} pts
         </div>
         <div class="tbl-actions">
           <button id="coachToggle" class="btn btn-ghost">${PLAY.coach ? "Hide" : "Show"} Coach</button>
           <button id="quitBtn" class="btn btn-ghost">New Game</button>
         </div>
       </div>
-      <div class="table-layout">
-        <div class="table-main">
-          ${opponentsHTML(s)}
-          ${centerHTML(s)}
-          ${youHTML(s)}
-          <div class="action-bar" id="actionBar">${actionHTML(s)}</div>
-          ${logHTML(s)}
+      <div class="mj-wrap">
+        <div class="mj-table">
+          <div class="seat-slot slot-top">${oppPanel(POS(s).top, "top")}</div>
+          <div class="seat-slot slot-left">${oppPanel(POS(s).left, "left")}</div>
+          <div class="seat-slot slot-right">${oppPanel(POS(s).right, "right")}</div>
+          <div class="mj-center">
+            <div class="phase-banner ${s.your_turn ? "you-turn" : ""}">${esc(phaseLabel(s))}</div>
+            ${wallHTML(s)}
+            ${discardHTML(s)}
+          </div>
+          <div class="seat-slot slot-you">${youPanel(s)}</div>
         </div>
         ${PLAY.coach ? coachHTML(s) : ""}
-      </div>`;
+      </div>
+      ${correctionHTML()}
+      <div class="action-bar" id="actionBar">${actionHTML(s)}</div>
+      ${logHTML(s)}`;
     wire(host);
+  }
+
+  const SEAT_ORDER = ["East", "South", "West", "North"];
+  function POS(s) {
+    const hi = SEAT_ORDER.indexOf(s.you.seat);
+    const out = {};
+    (s.opponents || []).forEach((o) => {
+      const off = (SEAT_ORDER.indexOf(o.seat) - hi + 4) % 4;
+      out[off === 1 ? "right" : off === 2 ? "top" : "left"] = o;
+    });
+    return out;
   }
 
   function tileHTML(t, opts) {
@@ -119,65 +136,100 @@
     if (opts.selectable) cls.push("selectable");
     if (PLAY.selected.includes(t.id)) cls.push("selected");
     if (opts.dead) cls.push("dead");
+    if (opts.drew) cls.push("drew");
+    if (opts.fresh) cls.push("enter");
     if (opts.joker || t.joker) cls.push("joker");
     return `<span class="${cls.join(" ")}" data-id="${esc(t.id)}" title="${esc(t.name)}">${t.svg || esc(t.name)}</span>`;
   }
 
-  function backHTML(n) {
+  function backHTML(n, cls) {
     let out = "";
-    for (let i = 0; i < n; i++) out += `<span class="tile back"></span>`;
+    for (let i = 0; i < n; i++) out += `<span class="tile back ${cls || ""}"></span>`;
     return out;
   }
 
   function expHTML(exps) {
-    if (!exps || !exps.length) return `<span class="muted">none</span>`;
-    return exps.map((e) =>
-      `<span class="exposure" title="${esc(e.group_type)}">${e.tiles.map((t) => tileHTML(t)).join("")}</span>`
-    ).join(" ");
+    if (!exps || !exps.length) return "";
+    return exps.map((e) => {
+      const jk = e.joker_count ? `<span class="exp-jk" title="uses ${e.joker_count} joker(s)">J</span>` : "";
+      return `<span class="exposure" title="${esc(e.group_type)}">${e.tiles.map((t) => tileHTML(t)).join("")}${jk}</span>`;
+    }).join(" ");
   }
 
-  function opponentsHTML(s) {
-    return `<div class="opponents">${s.opponents.map((o) => `
-      <div class="opp ${o.is_turn ? "turn" : ""}">
-        <div class="opp-head">
-          <span class="seat">${esc(o.seat)}</span>
-          <span class="lvl-badge">AI ${o.level}</span>
-          <span class="score">${o.score} pts</span>
-          ${o.is_turn ? '<span class="turn-dot">● turn</span>' : ""}
-        </div>
-        <div class="opp-tiles">${backHTML(o.concealed_count)}</div>
-        <div class="opp-exp">${expHTML(o.exposures)}</div>
-      </div>`).join("")}</div>`;
-  }
-
-  function centerHTML(s) {
-    const last = s.last_discard
-      ? `<div class="last-discard"><span class="lbl">Last discard${s.last_discarder ? " (" + esc(s.last_discarder) + ")" : ""}:</span>${tileHTML(s.last_discard)}</div>`
-      : "";
-    const disc = s.discards.length
-      ? s.discards.map((t) => tileHTML(t)).join("")
-      : `<span class="muted">no discards yet</span>`;
-    return `<div class="center">
-      <div class="phase-banner">${esc(phaseLabel(s))}</div>
-      ${last}
-      <div class="discard-pile"><span class="lbl">Discards:</span>${disc}</div>
+  function oppPanel(o, where) {
+    if (!o) return "";
+    return `<div class="opp ${where} ${o.is_turn ? "turn" : ""}">
+      <div class="opp-head">
+        <span class="seat-tag">${esc(o.seat)}</span>
+        <span class="lvl-badge">AI ${o.level}</span>
+        <span class="opp-score">${o.score}★${o.hands_won || 0}</span>
+        ${o.is_turn ? '<span class="turn-dot">●</span>' : ""}
+      </div>
+      <div class="opp-rack">${backHTML(o.concealed_count, "mini")}</div>
+      ${o.exposures.length ? `<div class="opp-exp">${expHTML(o.exposures)}</div>` : ""}
     </div>`;
   }
 
-  function youHTML(s) {
+  function wallHTML(s) {
+    const n = s.wall_remaining;
+    return `<div class="wall">
+      <div class="wall-label">🀫 Wall — <strong>${n}</strong> tiles left</div>
+      <div class="wall-tiles">${backHTML(n, "wall")}</div>
+    </div>`;
+  }
+
+  function discardHTML(s) {
+    const last = s.discards.length - 1;
+    const disc = s.discards.length
+      ? s.discards.map((t, i) => tileHTML(t, { discard: true, fresh: i === last })).join("")
+      : `<span class="muted">no discards yet</span>`;
+    const who = s.last_discarder ? ` · last by ${esc(s.last_discarder)}` : "";
+    return `<div class="discards">
+      <div class="discards-label">Discards${who}</div>
+      <div class="discard-grid">${disc}</div>
+    </div>`;
+  }
+
+  function youPanel(s) {
     const you = s.you;
     const deadIds = (s.hint && s.hint.deadwood ? s.hint.deadwood : []).map((t) => t.id);
     const selectable = canSelectTiles(s);
     const rack = you.concealed.map((t) =>
-      tileHTML(t, { selectable, dead: deadIds.includes(t.id) })).join("");
-    return `<div class="you">
+      tileHTML(t, { selectable, dead: deadIds.includes(t.id), drew: t.id === PLAY._justDrew })).join("");
+    return `<div class="you-panel ${s.your_turn ? "turn" : ""}">
       <div class="you-head">
-        <span class="seat">You (${esc(you.seat)})</span>
-        <span class="score">${you.score} pts · ${you.hands_won} won</span>
+        <span class="seat-tag you-tag">You · ${esc(you.seat)}${s.dealer === you.seat ? " · Dealer" : ""}</span>
+        <span class="you-score">${you.score} pts · ${you.hands_won}★ won</span>
       </div>
-      <div class="you-exp"><span class="lbl">Exposed:</span> ${expHTML(you.exposures)}</div>
+      ${you.exposures.length ? `<div class="you-exp"><span class="lbl">Exposed:</span> ${expHTML(you.exposures)}</div>` : ""}
       <div class="rack">${rack}</div>
     </div>`;
+  }
+
+  function correctionHTML() {
+    const c = PLAY._correction;
+    if (!c) return "";
+    return `<div class="correction">
+      <span class="cx-icon">🛑</span>
+      <div class="cx-body"><strong>${esc(c.msg)}</strong>${c.why ? `<p>${esc(c.why)}</p>` : ""}</div>
+      <button id="cxClose" class="btn btn-ghost">Got it</button>
+    </div>`;
+  }
+
+  function correct(data) {
+    const r = data && data.result;
+    if (r && r.ok === false) {
+      const msg = r.error || "That move isn't allowed.";
+      let why = "";
+      (T.illegal || []).some((e) => {
+        if (msg.toLowerCase().includes(e.match.toLowerCase())) { why = e.why; return true; }
+        return false;
+      });
+      PLAY._correction = { msg, why };
+      return true;
+    }
+    PLAY._correction = null;
+    return false;
   }
 
   function phaseLabel(s) {
@@ -323,8 +375,9 @@
     const on = (id, fn) => { const e = q(id); if (e) e.onclick = fn; };
 
     on("#coachToggle", () => { PLAY.coach = !PLAY.coach; draw(host); });
-    const quit = () => { PLAY.id = null; PLAY.selected = []; renderPlay(); };
+    const quit = () => { PLAY.id = null; PLAY.selected = []; PLAY._correction = null; renderPlay(); };
     on("#quitBtn", quit); on("#quitBtn2", quit);
+    on("#cxClose", () => { PLAY._correction = null; draw(host); });
 
     // tile selection
     if (canSelectTiles(s)) {
@@ -342,32 +395,35 @@
     on("#passBtn", async () => {
       if (PLAY.selected.length !== 3) return flash(host, "Select exactly 3 tiles to pass.");
       const r = await act(`/api/game/${PLAY.id}/charleston`, { tile_ids: PLAY.selected });
-      if (r && r.result && r.result.ok === false) flash(host, r.result.error);
-      PLAY.selected = []; draw(host);
+      if (!correct(r)) PLAY.selected = [];
+      draw(host);
     });
     on("#secondYes", async () => { await act(`/api/game/${PLAY.id}/charleston-second`, { continue: true }); PLAY.selected = []; draw(host); });
     on("#secondNo", async () => { await act(`/api/game/${PLAY.id}/charleston-second`, { continue: false }); PLAY.selected = []; draw(host); });
 
     on("#drawBtn", async () => {
       const r = await act(`/api/game/${PLAY.id}/draw`, {});
+      correct(r);
+      PLAY._justDrew = (r && r.result && r.result.drew) || null;
       PLAY._canWin = !!(r && r.result && r.result.can_declare_win);
       draw(host);
     });
     on("#discardBtn", async () => {
       if (PLAY.selected.length !== 1) return flash(host, "Click one tile to discard.");
-      await act(`/api/game/${PLAY.id}/discard`, { tile_id: PLAY.selected[0] });
-      PLAY.selected = []; PLAY._canWin = false; draw(host);
+      const r = await act(`/api/game/${PLAY.id}/discard`, { tile_id: PLAY.selected[0] });
+      if (!correct(r)) { PLAY.selected = []; PLAY._canWin = false; PLAY._justDrew = null; }
+      draw(host);
     });
     on("#declareBtn", async () => {
       const r = await act(`/api/game/${PLAY.id}/declare-win`, {});
-      if (r && r.result && r.result.ok === false) flash(host, r.result.error);
+      correct(r);
       draw(host);
     });
     host.querySelectorAll(".callBtn").forEach((el) => {
-      el.onclick = async () => { await act(`/api/game/${PLAY.id}/call`, { kind: el.dataset.kind }); PLAY.selected = []; draw(host); };
+      el.onclick = async () => { const r = await act(`/api/game/${PLAY.id}/call`, { kind: el.dataset.kind }); correct(r); PLAY.selected = []; draw(host); };
     });
-    on("#passCall", async () => { await act(`/api/game/${PLAY.id}/pass-call`, {}); draw(host); });
-    on("#nextHand", async () => { await act(`/api/game/${PLAY.id}/next-hand`, {}); PLAY.selected = []; draw(host); });
+    on("#passCall", async () => { await act(`/api/game/${PLAY.id}/pass-call`, {}); PLAY._justDrew = null; draw(host); });
+    on("#nextHand", async () => { await act(`/api/game/${PLAY.id}/next-hand`, {}); PLAY.selected = []; PLAY._justDrew = null; PLAY._correction = null; draw(host); });
 
     host.querySelectorAll(".redeemBtn").forEach((el) => {
       el.onclick = async () => {
@@ -375,7 +431,7 @@
         if (!e) return;
         const r = await act(`/api/game/${PLAY.id}/exchange-joker`,
           { seat_index: e.seat_index, exposure_index: e.exposure_index, tile_id: e.tile_id });
-        if (r && r.result && r.result.ok === false) flash(host, r.result.error);
+        correct(r);
         draw(host);
       };
     });

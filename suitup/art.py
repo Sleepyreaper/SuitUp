@@ -314,4 +314,39 @@ def render_joker() -> str:
         f'font-family="{FONT_STACK}" font-size="16" font-weight="800" '
         f'text-anchor="middle" fill="{COLOR_JOKER}">JOKER</text>'
     )
-    body
+    body += "</svg>"
+    return body
+
+
+_FLOWER_ORDER = ("flower_1", "flower_2", "flower_3", "flower_4",
+                 "season_1", "season_2", "season_3", "season_4")
+_FLOWER_PALETTE = ("#d16ba5", "#e0736b", "#e0a552", "#57a65a",
+                   "#5aa6a0", "#5a86c0", "#8d6bd0", "#c05a97")
+
+
+def render_flower(label: str) -> str:
+    """Render a Flower/Season bonus tile: a six-petal blossom whose colour and
+    F/S mark vary by label. All flowers are interchangeable in American play."""
+    idx = _FLOWER_ORDER.index(label) if label in _FLOWER_ORDER else 0
+    color = _FLOWER_PALETTE[idx % len(_FLOWER_PALETTE)]
+    cx = TILE_WIDTH / 2
+    cy = TILE_HEIGHT / 2 - 6
+    body = _svg_open("flower")
+    body += _tile_frame()
+    for k in range(6):
+        body += (
+            f'<ellipse cx="{cx}" cy="{cy - 17}" rx="9" ry="17" fill="{color}" '
+            f'opacity="0.9" transform="rotate({k * 60} {cx} {cy})"/>'
+        )
+    body += (
+        f'<circle cx="{cx}" cy="{cy}" r="10" fill="#f2d24a" '
+        f'stroke="{COLOR_BORDER}" stroke-width="1"/>'
+    )
+    mark = ("S" if label.startswith("season") else "F") + label[-1]
+    body += (
+        f'<text x="{cx}" y="{TILE_HEIGHT - 18}" font-family="{FONT_STACK}" '
+        f'font-size="18" font-weight="800" text-anchor="middle" '
+        f'fill="{color}">{mark}</text>'
+    )
+    body += "</svg>"
+    return body

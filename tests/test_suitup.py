@@ -59,7 +59,7 @@ def test_web_endpoints():
     assert c.get("/healthz").status_code == 200
     assert c.get("/").status_code == 200
     tiles = c.get("/api/tiles").get_json()
-    assert tiles["count_unique"] == 35  # 27 suited + 4 winds + 3 dragons + 1 joker
+    assert tiles["count_unique"] == 43  # 27 suited + 4 winds + 3 dragons + 1 joker + 8 flowers
     setup = c.get("/api/setup?seed=9").get_json()
     assert setup["dice"]["total"] == setup["dice"]["die1"] + setup["dice"]["die2"]
     char = c.get("/api/charleston").get_json()

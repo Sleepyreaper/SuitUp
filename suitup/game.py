@@ -20,7 +20,7 @@ from suitup.groups import _non_joker_key
 from suitup.hands import (AI_TARGET_HANDS, WINNING_HANDS, assess_hand,
                           best_assessment, matches_hand, winning_hands_for)
 from suitup.scoring import score_win
-from suitup.tiles import Tile, build_tile_set, is_joker
+from suitup.tiles import Tile, build_tile_set, is_joker, is_flower
 
 SEATS = ["East", "South", "West", "North"]
 START_HAND = 13
@@ -113,7 +113,7 @@ class Game:
         return g
 
     def _deal(self) -> None:
-        tiles = build_tile_set(include_flowers=False)
+        tiles = build_tile_set(include_flowers=True)
         self.rng.shuffle(tiles)
         for p in self.players:
             p.concealed = []
@@ -159,9 +159,9 @@ class Game:
 
     def _ai_charleston_pick(self, p: Player) -> List[Tile]:
         assess = best_assessment(p.concealed, AI_TARGET_HANDS)
-        dead = [t for t in assess.deadwood if not is_joker(t)]
-        pool = dead + [t for t in p.concealed
-                       if not is_joker(t) and t not in dead]
+        passable = lambda t: not is_joker(t) and not is_flower(t)  # never pass jokers/flowers
+        dead = [t for t in assess.deadwood if passable(t)]
+        pool = dead + [t for t in p.concealed if passable(t) and t not in dead]
         return pool[:3]
 
     def submit_charleston(self, tile_ids: List[str]) -> dict:

@@ -34,6 +34,8 @@ def tile_svg(tile: Tile) -> str:
         return art.render_wind(tile.honor)
     if tile.kind == TileKind.DRAGON:
         return art.render_dragon(tile.honor)
+    if tile.kind == TileKind.FLOWER:
+        return art.render_flower(tile.label)
     return art.render_joker()
 
 
@@ -48,7 +50,7 @@ def tile_json(tile: Tile) -> dict:
 
 
 _SVG_BY_KEY: dict = {}
-for _t in build_tile_set(include_flowers=False):
+for _t in build_tile_set(include_flowers=True):
     _k = _t.identifier().rsplit("_c", 1)[0]
     _SVG_BY_KEY.setdefault(_k, tile_svg(_t))
 
@@ -111,7 +113,7 @@ def create_app() -> Flask:
         """Every unique tile face (one per identity, not all copies) with art."""
         seen = set()
         out = []
-        for t in build_tile_set(include_flowers=False):
+        for t in build_tile_set(include_flowers=True):
             key = t.identifier().rsplit("_c", 1)[0]
             if key in seen:
                 continue

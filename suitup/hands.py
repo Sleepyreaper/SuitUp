@@ -14,7 +14,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-from suitup.tiles import Tile, is_joker, suit_of
+from suitup.tiles import Tile, is_joker, is_flower, suit_of
 
 HAND_TILES = 14
 
@@ -50,7 +50,7 @@ def _pretty_ident(ident: str) -> str:
     names = {
         "wind_north": "North", "wind_east": "East", "wind_west": "West",
         "wind_south": "South", "dragon_red": "Red", "dragon_green": "Green",
-        "dragon_white": "Soap (White)",
+        "dragon_white": "Soap (White)", "flower": "Flower",
     }
     if ident in names:
         return names[ident]
@@ -86,6 +86,13 @@ WINNING_HANDS: Tuple[WinningHand, ...] = (
                 fixed=(("wind_north", 1), ("wind_east", 1), ("wind_west", 1),
                        ("wind_south", 1), ("dragon_red", 2), ("dragon_green", 2),
                        ("dragon_white", 2), ("dots_2", 2), ("dots_6", 2))),
+    WinningHand("flower_basket", "Flower Basket", "stretch",
+                (), False, 65,
+                "A Flower Kong (any four of the eight Flowers) plus dragon pungs, a "
+                "Soap pair and an East pair. Flowers belong to no suit and are used "
+                "only where a hand calls for them — you may never pass a Flower.",
+                fixed=(("flower", 4), ("dragon_red", 3), ("dragon_green", 3),
+                       ("dragon_white", 2), ("wind_east", 2))),
 )
 
 # The simple AI only targets achievable structural hands; the exact-tile /
@@ -99,7 +106,10 @@ def hand_by_id(hand_id: str) -> Optional[WinningHand]:
 
 
 def _identity(tile: Tile) -> str:
-    """A tile's identity ignoring which physical copy it is (e.g. 'dots_1')."""
+    """A tile's identity ignoring which physical copy it is (e.g. 'dots_1').
+    All 8 Flowers/Seasons share one identity — they are interchangeable."""
+    if is_flower(tile):
+        return "flower"
     return tile.identifier().rsplit("_c", 1)[0]
 
 
@@ -143,7 +153,8 @@ def matches_hand(tiles: List[Tile], hand: WinningHand) -> bool:
         honors = any(not is_joker(t) and suit_of(t) is None for t in tiles)
         if honors or len(suits) > 1:             # single-suit hands are suited-only, one suit
             return False
-    counts: Dict[str, int] = Counter(_identity(t) for t in tiles if not is_joker(t))
+    counts: Dict[str, int] = Counter(
+        _identity(t) for t in tiles if not is_joker(t) and not is_flower(t))
     return _can_fill(dict(counts), jokers, sorted(hand.group_sizes, reverse=True))
 
 
@@ -214,7 +225,7 @@ def assess_hand(tiles: List[Tile], hand: WinningHand) -> HandAssessment:
         keep_suit = _dominant_suit(naturals)
         usable = [t for t in naturals if suit_of(t) == keep_suit]
     else:
-        usable = list(naturals)
+        usable = [t for t in naturals if not is_flower(t)]   # flowers only help flower hands
 
     by_ident: Dict[str, List[Tile]] = {}
     for t in usable:
