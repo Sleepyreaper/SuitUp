@@ -47,7 +47,6 @@ class GroupType(str, Enum):
     PUNG = "pung"
     KONG = "kong"
     QUINT = "quint"
-    RUN = "run"
 
 
 class SuitRelation(str, Enum):
@@ -171,15 +170,9 @@ def _kong_slot(label: str, suit_relation: SuitRelation) -> GroupSlot:
 
 
 def _run_slot(label: str, suit_relation: SuitRelation) -> GroupSlot:
-    """Build a standard three-tile consecutive-run slot."""
-    return GroupSlot(
-        group_type=GroupType.RUN,
-        size=3,
-        joker_eligible=False,
-        suit_relation=suit_relation,
-        honor_only=False,
-        label=label,
-    )
+    """Deprecated. American Mah Jongg has no runs; kept only so old imports don't
+    break. Returns a plain pung slot. Do not use in new patterns."""
+    return _pung_slot(label, suit_relation)
 
 
 def _honor_pung_slot(label: str) -> GroupSlot:
@@ -199,15 +192,16 @@ PRACTICE_TRIPLE_STEP: PracticePattern = PracticePattern(
     display_name="Triple Step (SuitUp original)",
     difficulty=Difficulty.INTRO,
     explanation=(
-        "A gentle first pattern: one pair plus three pungs, all in the "
-        "same suit. Teaches counting to fourteen tiles and how jokers "
-        "can fill in for any tile in a pung."
+        "A gentle first pattern: one pair plus FOUR pungs, all in the "
+        "same suit (14 tiles total). Teaches counting to fourteen tiles "
+        "and how a joker can fill in for any tile in a pung."
     ),
     group_slots=(
         _pair_slot("center pair"),
         _pung_slot("pung one", SuitRelation.SAME_AS_PATTERN),
         _pung_slot("pung two", SuitRelation.SAME_AS_PATTERN),
         _pung_slot("pung three", SuitRelation.SAME_AS_PATTERN),
+        _pung_slot("pung four", SuitRelation.SAME_AS_PATTERN),
     ),
     requires_pair=True,
 )
@@ -215,19 +209,21 @@ PRACTICE_TRIPLE_STEP: PracticePattern = PracticePattern(
 
 PRACTICE_RUN_LADDER: PracticePattern = PracticePattern(
     pattern_id="practice_run_ladder",
-    display_name="Run Ladder (SuitUp original)",
+    display_name="Number Ladder (SuitUp original)",
     difficulty=Difficulty.BUILDING,
     explanation=(
-        "Two consecutive-number runs of three plus one pung plus a "
-        "pair, all in one suit. Teaches that runs cannot use jokers "
-        "while pairs and pungs can, so players must plan which tiles "
-        "to keep in hand versus which to expose."
+        "One pair plus four pungs of CONSECUTIVE NUMBERS in one suit — "
+        "for example 22 333 444 555 666 (14 tiles). This teaches the "
+        "'Consecutive Run' idea correctly: you use consecutive numbers, "
+        "but each number is its OWN pung. There is no 1-2-3 sequence in "
+        "American Mah Jongg."
     ),
     group_slots=(
         _pair_slot("anchor pair"),
-        _run_slot("run one", SuitRelation.SAME_AS_PATTERN),
-        _run_slot("run two", SuitRelation.SAME_AS_PATTERN),
-        _pung_slot("closing pung", SuitRelation.SAME_AS_PATTERN),
+        _pung_slot("pung one", SuitRelation.SAME_AS_PATTERN),
+        _pung_slot("pung two", SuitRelation.SAME_AS_PATTERN),
+        _pung_slot("pung three", SuitRelation.SAME_AS_PATTERN),
+        _pung_slot("pung four", SuitRelation.SAME_AS_PATTERN),
     ),
     requires_pair=True,
 )
@@ -238,16 +234,17 @@ PRACTICE_HONOR_GUARD: PracticePattern = PracticePattern(
     display_name="Honor Guard (SuitUp original)",
     difficulty=Difficulty.BUILDING,
     explanation=(
-        "One honor pung (winds or dragons), two numbered pungs in "
-        "different suits, and a pair. Teaches the distinction between "
-        "honor tiles and numbered suits, and how a pattern can mix "
-        "both categories across its slots."
+        "One honor pung (winds or dragons), three numbered pungs in "
+        "different suits, and a pair (14 tiles). Teaches the distinction "
+        "between honor tiles and numbered suits, and how a pattern can "
+        "mix both categories across its slots."
     ),
     group_slots=(
         _pair_slot("keeper pair"),
         _honor_pung_slot("honor pung"),
         _pung_slot("numbered pung one", SuitRelation.DISTINCT_PER_SLOT),
         _pung_slot("numbered pung two", SuitRelation.DISTINCT_PER_SLOT),
+        _pung_slot("numbered pung three", SuitRelation.DISTINCT_PER_SLOT),
     ),
     requires_pair=True,
 )
@@ -258,18 +255,18 @@ PRACTICE_QUAD_STACK: PracticePattern = PracticePattern(
     display_name="Quad Stack (SuitUp original)",
     difficulty=Difficulty.STRETCH,
     explanation=(
-        "A pair plus two pungs plus one kong, mixing suits freely. "
-        "Teaches that a kong uses four tiles instead of three, so the "
-        "beginner must recount their fourteen-tile target and see how "
-        "an exposed kong changes hand shape and draw order."
+        "Two kongs plus two pungs, mixing suits freely (14 tiles, no "
+        "pair needed). Teaches that a kong uses four tiles instead of "
+        "three, so the beginner must recount their fourteen-tile target "
+        "and see how an exposed kong changes hand shape."
     ),
     group_slots=(
-        _pair_slot("floating pair"),
-        _pung_slot("pung a", SuitRelation.ANY_SUIT),
-        _pung_slot("pung b", SuitRelation.ANY_SUIT),
-        _kong_slot("kong c", SuitRelation.ANY_SUIT),
+        _kong_slot("kong a", SuitRelation.ANY_SUIT),
+        _kong_slot("kong b", SuitRelation.ANY_SUIT),
+        _pung_slot("pung c", SuitRelation.ANY_SUIT),
+        _pung_slot("pung d", SuitRelation.ANY_SUIT),
     ),
-    requires_pair=True,
+    requires_pair=False,
 )
 
 
@@ -278,10 +275,10 @@ PRACTICE_JOKERLESS_DRILL: PracticePattern = PracticePattern(
     display_name="Jokerless Drill (SuitUp original)",
     difficulty=Difficulty.STRETCH,
     explanation=(
-        "Three consecutive runs in the same suit plus a pair, with no "
-        "joker substitution allowed anywhere. This is the hardest "
-        "practice pattern and teaches disciplined tile reading without "
-        "relying on jokers as a safety net."
+        "One pair plus four pungs, all in the same suit, with NO joker "
+        "substitution allowed anywhere (14 tiles). This teaches "
+        "disciplined tile reading without relying on jokers as a safety "
+        "net — much like the card's Singles-and-Pairs hands."
     ),
     group_slots=(
         GroupSlot(
@@ -292,9 +289,14 @@ PRACTICE_JOKERLESS_DRILL: PracticePattern = PracticePattern(
             honor_only=False,
             label="strict pair",
         ),
-        _run_slot("run one", SuitRelation.SAME_AS_PATTERN),
-        _run_slot("run two", SuitRelation.SAME_AS_PATTERN),
-        _run_slot("run three", SuitRelation.SAME_AS_PATTERN),
+        GroupSlot(group_type=GroupType.PUNG, size=3, joker_eligible=False,
+                  suit_relation=SuitRelation.SAME_AS_PATTERN, label="strict pung one"),
+        GroupSlot(group_type=GroupType.PUNG, size=3, joker_eligible=False,
+                  suit_relation=SuitRelation.SAME_AS_PATTERN, label="strict pung two"),
+        GroupSlot(group_type=GroupType.PUNG, size=3, joker_eligible=False,
+                  suit_relation=SuitRelation.SAME_AS_PATTERN, label="strict pung three"),
+        GroupSlot(group_type=GroupType.PUNG, size=3, joker_eligible=False,
+                  suit_relation=SuitRelation.SAME_AS_PATTERN, label="strict pung four"),
     ),
     requires_pair=True,
 )

@@ -106,3 +106,100 @@ body {
 .note { background: #fbf6e9; border: 1px solid #ecd9a8; border-radius: 8px; padding: 10px 14px; margin: 10px 0; }
 .rules dt { font-weight: 700; color: var(--green); margin-top: 12px; }
 .rules dd { margin: 2px 0 0; color: var(--ink); }
+
+/* ============================ Play — simulator UI ============================ */
+.btn-primary { background: var(--green); color: #fff; }
+.btn-primary:hover { background: var(--green-light); }
+.btn-ghost { background: #fff; color: var(--green); border: 1px solid var(--line); }
+.btn-ghost:hover { background: #f3f1ea; }
+.btn-win { background: var(--gold); color: #23180a; }
+.btn-win:hover { background: #d9a63b; }
+.btn { margin: 4px 6px 4px 0; }
+
+.intro-list { margin: 6px 0 0; padding-left: 20px; }
+.intro-list li { margin: 6px 0; }
+.setup-card .setup-row { display: block; margin: 12px 0; color: var(--ink); }
+.setup-card select { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); margin-left: 8px; }
+
+.table-top { display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.tbl-info { color: var(--ink); font-size: .95rem; }
+.table-layout { display: flex; gap: 16px; align-items: flex-start; }
+.table-main { flex: 1 1 auto; min-width: 0; }
+
+/* smaller tiles at the table */
+.rack .tile, .opp-tiles .tile, .discard-pile .tile, .exposure .tile,
+.win-tiles .tile, .last-discard .tile { width: 42px; height: 59px; margin: 3px; }
+.tile.back { background: linear-gradient(135deg, #1c7a4a, #0f5132);
+  border-radius: 6px; border: 1px solid #0b3f27; box-shadow: inset 0 0 0 3px rgba(255,255,255,.12); }
+.tile.dead { opacity: .42; }
+.tile.joker { outline: 2px dashed var(--gold); outline-offset: -2px; border-radius: 6px; }
+
+.opponents { display: flex; gap: 10px; flex-wrap: wrap; }
+.opp { background: var(--felt); color: #fff; border-radius: 12px; padding: 10px 12px;
+  flex: 1 1 200px; min-width: 190px; }
+.opp.turn { outline: 2px solid var(--gold); }
+.opp-head { display: flex; align-items: center; gap: 8px; font-size: .85rem; margin-bottom: 6px; }
+.opp-head .seat { background: rgba(0,0,0,.2); padding: 2px 8px; margin: 0; }
+.lvl-badge { background: rgba(255,255,255,.18); padding: 1px 6px; border-radius: 6px; }
+.turn-dot { color: var(--gold); font-weight: 700; margin-left: auto; }
+.opp-tiles { line-height: 0; }
+.opp-tiles .tile.back { width: 20px; height: 28px; margin: 1px; }
+.opp-exp { margin-top: 6px; min-height: 12px; }
+
+.center { background: #0d5030; color: #fff; border-radius: 12px; padding: 12px 14px; margin: 12px 0; }
+.phase-banner { font-weight: 700; font-size: 1.05rem; color: #fff; margin-bottom: 8px; }
+.last-discard { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.last-discard .tile { outline: 2px solid var(--gold); border-radius: 6px; }
+.discard-pile { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }
+.lbl { font-size: .8rem; opacity: .85; margin-right: 6px; }
+.center .muted { color: rgba(255,255,255,.7); }
+
+.you { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px 14px; box-shadow: var(--shadow); margin-bottom: 10px; }
+.you-head { display: flex; justify-content: space-between; font-weight: 600; color: var(--green); }
+.you-exp { margin: 8px 0; }
+.rack { display: flex; flex-wrap: wrap; align-items: center; }
+.exposure { display: inline-flex; background: #eef6f0; border-radius: 8px; padding: 2px 4px; margin: 0 4px; }
+
+.action-bar { background: #fbf6e9; border: 1px solid #ecd9a8; border-radius: 10px;
+  padding: 12px 14px; margin: 6px 0; }
+.hintline { color: var(--ink); margin-bottom: 8px; }
+.flash { background: #fde2e2; border: 1px solid #f5b5b5; color: #8a1f1f;
+  border-radius: 8px; padding: 6px 10px; margin-bottom: 8px; }
+
+.win-box { background: #eef6f0; border: 1px solid #bfe0cc; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+.win-head { font-weight: 700; color: var(--green); font-size: 1.05rem; }
+.win-tiles { margin: 8px 0; line-height: 0; }
+.win-score { color: var(--muted); font-size: .9rem; }
+.final-scores { margin: 8px 0; }
+.final-scores div { padding: 2px 0; }
+
+.log { margin-top: 10px; color: var(--muted); font-size: .85rem; }
+.log summary { cursor: pointer; }
+.log ul { margin: 6px 0; padding-left: 18px; }
+
+/* Coach overlay */
+.coach { flex: 0 0 300px; background: var(--card); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: var(--shadow); position: sticky; top: 12px; }
+.coach-head { background: var(--green); color: #fff; padding: 10px 14px;
+  border-radius: 12px 12px 0 0; font-weight: 700; }
+.coach-body { padding: 12px 14px; }
+.coach-body h4 { margin: 0 0 6px; color: var(--green); }
+.coach-body p { margin: 0 0 10px; color: var(--ink); font-size: .92rem; }
+.coach-terms { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.term-chip { background: #f3f1ea; border: 1px solid var(--line); color: var(--green);
+  border-radius: 14px; padding: 3px 10px; font-size: .82rem; cursor: pointer; }
+.term-chip:hover { background: var(--gold); color: #23180a; }
+.coach-hint { background: #f7fbf8; border: 1px solid #d9ecdf; border-radius: 8px; padding: 8px 10px; margin-top: 8px; }
+.coach-hint-head { font-size: .78rem; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+.bar { background: #e3e9e5; border-radius: 6px; height: 8px; margin: 6px 0; overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--gold); }
+.glossary-box { margin-top: 10px; }
+.gloss { background: #fbf6e9; border: 1px solid #ecd9a8; border-radius: 8px; padding: 8px 10px; }
+.gloss p { margin: 4px 0 0; font-size: .88rem; color: var(--ink); }
+
+@media (max-width: 860px) {
+  .table-layout { flex-direction: column; }
+  .coach { flex: 1 1 auto; position: static; width: 100%; }
+}

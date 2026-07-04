@@ -278,9 +278,9 @@
  },
  {
  number: 3,
- title: "Learn runs",
- body: "A run is a sequence of three consecutive numbers in the same suit, such as 3-4-5 in Dots. Runs are suit-specific and order matters.",
- learner_action: "Build one simple run in a single suit, such as 1-2-3 or 4-5-6."
+ title: "There are NO runs in American Mah Jongg",
+ body: "Unlike Chinese or Japanese mahjong, American Mah Jongg has NO sequences or 'runs' — you never make a 1-2-3. Every group is a set of IDENTICAL tiles: a Pair (2), Pung (3), Kong (4), Quint (5), or Sextet (6). Some card hands (the 'Consecutive Run' category) do use consecutive NUMBERS — but each number is still its own matching group, e.g. 111 222 3333, never a 1-2-3.",
+ learner_action: "Say it out loud: 'No sequences. Every group is the same tile.' Build 111 and 222 as two separate pungs."
  },
  {
  number: 4,
@@ -417,7 +417,7 @@
  {
  number: 2,
  title: "Use the lesson language during play",
- body: "When you draw or discard, talk yourself through what you see: pair, pung, run, honor, joker, pass, keep, discard. Naming patterns helps new knowledge stick.",
+ body: "When you draw or discard, talk yourself through what you see: pair, pung, kong, honor, joker, pass, keep, discard. Naming patterns helps new knowledge stick.",
  learner_action: "On your next practice turn, say one sentence out loud describing what the drawn tile does for your hand."
  },
  {

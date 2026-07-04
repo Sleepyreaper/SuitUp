@@ -5,6 +5,7 @@ const CURRICULUM = window.SUITUP_CURRICULUM || { units: [] };
 const RULES = window.SUITUP_RULES_REFERENCE || { sections: [], quick_reference: {} };
 
 const TABS = [
+  { id: "play", label: "▶ Play" },
   { id: "start", label: "Start Here" },
   { id: "learn", label: "Learn" },
   { id: "tiles", label: "The Tiles" },
@@ -47,6 +48,7 @@ function setActive(id) {
 }
 
 const RENDERERS = {
+  play: () => window.renderPlay(),
   start: renderStart,
   learn: renderLearn,
   tiles: renderTiles,
