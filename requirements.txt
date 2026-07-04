@@ -1,0 +1,38 @@
+Flask==3.0.3
+```
+
+### Dockerfile
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM python:3.12-slim AS runtime
+
+# Ol' Gil keeps this image lean on purpose: no compilers, no build tools,
+# just what Flask needs to serve SuitUp fully offline on port 8092.
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    SUITUP_HOST=0.0.0.0 \
+    SUITUP_PORT=8092 \
+    SUITUP_DEBUG=0
+
+WORKDIR /app
+
+# Non-root runtime user, defense in depth.
+RUN addgroup --system suitup \
+    && adduser --system --ingroup suitup --home /home/suitup suitup
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY suitup ./suitup
+COPY run.py ./run.py
+
+RUN chown -R suitup:suitup /app
+USER suitup
+
+EXPOSE 8092
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python3 -c "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8092/api/v1/health', timeout=2).status == 200 else 1)"
+
+CMD ["python3", "-m", "suitup.web.app"]
