@@ -1,0 +1,14 @@
+services:
+  suitup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: suitup:local
+    container_name: suitup
+    ports:
+      - "8092:8092"
+    environment:
+      SUITUP_HOST: "0.0.0.0"
+      SUITUP_PORT: "8092"
+      SUITUP_DEBUG: "0"
+    restart: unless-stopped
