@@ -1,0 +1,530 @@
+{
+ "_meta": {
+ "contract_name": "suitup_curriculum",
+ "contract_version": "1.0.0",
+ "release": "r1",
+ "last_updated": "2026-07-04",
+ "description": "Stable frontend curriculum payload for the SuitUp beginner teaching flow. This file is intentionally self-describing so the browser UI can consume it without a separate schema file.",
+ "stability_notes": [
+ "Top-level keys are stable for Release 1: _meta, schema, units.",
+ "units is an ordered array and must be rendered in array order.",
+ "lessons is an ordered array and must be rendered in array order within its unit.",
+ "steps is an ordered array and must be rendered in array order within its lesson.",
+ "Every unit, lesson, and step has a stable string id for client-side progress tracking.",
+ "Step numbers are explicit and 1-based so the UI does not need to infer numbering.",
+ "Content is original beginner-teaching text only and does not include copyrighted NMJL hand-card text."
+ ],
+ "field_rules": {
+ "id": "Stable snake_case identifier. Never recycle ids for different content.",
+ "title": "Short learner-facing label.",
+ "objective": "Single-sentence learner outcome for the lesson.",
+ "summary": "Short supporting explanation for cards, previews, or progress lists.",
+ "steps": "Array of numbered instructional steps. Each step is atomic and beginner-readable.",
+ "kind": "Optional UI hint for step presentation. Allowed values in Release 1: explain, identify, action, check, note.",
+ "estimated_minutes": "Positive integer estimate for pacing only."
+ }
+ },
+ "schema": {
+ "type": "object",
+ "required": [
+ "_meta",
+ "schema",
+ "units"
+ ],
+ "properties": {
+ "_meta": {
+ "type": "object",
+ "required": [
+ "contract_name",
+ "contract_version",
+ "release",
+ "last_updated",
+ "description",
+ "stability_notes",
+ "field_rules"
+ ]
+ },
+ "schema": {
+ "type": "object",
+ "required": [
+ "type",
+ "required",
+ "properties"
+ ]
+ },
+ "units": {
+ "type": "array",
+ "description": "Ordered curriculum units for the Release 1 beginner flow.",
+ "items": {
+ "type": "object",
+ "required": [
+ "id",
+ "order",
+ "title",
+ "summary",
+ "lessons"
+ ],
+ "properties": {
+ "id": {
+ "type": "string"
+ },
+ "order": {
+ "type": "integer",
+ "minimum": 1
+ },
+ "title": {
+ "type": "string"
+ },
+ "summary": {
+ "type": "string"
+ },
+ "lessons": {
+ "type": "array",
+ "items": {
+ "type": "object",
+ "required": [
+ "id",
+ "order",
+ "title",
+ "objective",
+ "summary",
+ "estimated_minutes",
+ "steps"
+ ],
+ "properties": {
+ "id": {
+ "type": "string"
+ },
+ "order": {
+ "type": "integer",
+ "minimum": 1
+ },
+ "title": {
+ "type": "string"
+ },
+ "objective": {
+ "type": "string"
+ },
+ "summary": {
+ "type": "string"
+ },
+ "estimated_minutes": {
+ "type": "integer",
+ "minimum": 1
+ },
+ "steps": {
+ "type": "array",
+ "items": {
+ "type": "object",
+ "required": [
+ "id",
+ "number",
+ "title",
+ "body"
+ ],
+ "properties": {
+ "id": {
+ "type": "string"
+ },
+ "number": {
+ "type": "integer",
+ "minimum": 1
+ },
+ "title": {
+ "type": "string"
+ },
+ "body": {
+ "type": "string"
+ },
+ "kind": {
+ "type": "string",
+ "enum": [
+ "explain",
+ "identify",
+ "action",
+ "check",
+ "note"
+ ]
+ }
+ }
+ }
+ }
+ }
+ }
+ }
+ }
+ }
+ }
+ }
+ },
+ "units": [
+ {
+ "id": "unit_table_setup",
+ "order": 1,
+ "title": "Get the table ready",
+ "summary": "Learn what belongs at the table and how each player prepares their own space before any tiles are dealt.",
+ "lessons": [
+ {
+ "id": "lesson_setup_overview",
+ "order": 1,
+ "title": "Set up the learning table",
+ "objective": "Prepare a four-player American Mah Jongg table with the basic equipment in the right places.",
+ "summary": "Start with a calm, physical setup so the table feels familiar before any turn-taking begins.",
+ "estimated_minutes": 6,
+ "steps": [
+ {
+ "id": "setup_overview_step_1",
+ "number": 1,
+ "title": "Place the mat and seat four sides",
+ "body": "Lay out the mat or choose a clear square playing surface. Imagine four player positions around the table: top, right, bottom, and left.",
+ "kind": "action"
+ },
+ {
+ "id": "setup_overview_step_2",
+ "number": 2,
+ "title": "Give each player a rack and pushers",
+ "body": "Set one rack in front of each player position. If your set includes pushers, place them near each rack so each player can move tiles neatly.",
+ "kind": "action"
+ },
+ {
+ "id": "setup_overview_step_3",
+ "number": 3,
+ "title": "Bring all tiles to the center",
+ "body": "Place the full tile set in the middle area so everyone can help mix and build the walls later.",
+ "kind": "action"
+ },
+ {
+ "id": "setup_overview_step_4",
+ "number": 4,
+ "title": "Keep the rule card separate from the tiles",
+ "body": "If you have a yearly hand card or reference card, keep it nearby for later. In this beginner lesson, the goal is table flow, not memorizing hand patterns.",
+ "kind": "note"
+ },
+ {
+ "id": "setup_overview_step_5",
+ "number": 5,
+ "title": "Check that each player has a clear personal area",
+ "body": "Make sure every player space has room for a rack in front and a wall area just beyond it. This helps the table stay organized once tiles are dealt.",
+ "kind": "check"
+ }
+ ]
+ },
+ {
+ "id": "lesson_build_walls",
+ "order": 2,
+ "title": "Build the walls",
+ "objective": "Build one wall in front of each player so the table is ready for the deal.",
+ "summary": "The walls are one of the most visible parts of American Mah Jongg. This lesson makes them feel normal and easy.",
+ "estimated_minutes": 7,
+ "steps": [
+ {
+ "id": "build_walls_step_1",
+ "number": 1,
+ "title": "Mix the tiles face down",
+ "body": "Turn the tiles face down and mix them thoroughly in the center. The point is to randomize them before building anything.",
+ "kind": "action"
+ },
+ {
+ "id": "build_walls_step_2",
+ "number": 2,
+ "title": "Pull tiles toward your side",
+ "body": "Each player gathers a share of tiles from the center toward their own edge of the table.",
+ "kind": "action"
+ },
+ {
+ "id": "build_walls_step_3",
+ "number": 3,
+ "title": "Stack tiles two high into a straight wall",
+ "body": "Build a wall in front of each player position using two stacked layers of tiles. Keep the wall as straight and tidy as you can.",
+ "kind": "action"
+ },
+ {
+ "id": "build_walls_step_4",
+ "number": 4,
+ "title": "Push the four walls into a square",
+ "body": "Move the finished walls inward so they form a box shape in the center, with one wall in front of each player.",
+ "kind": "action"
+ },
+ {
+ "id": "build_walls_step_5",
+ "number": 5,
+ "title": "Leave space for racks in front of the walls",
+ "body": "Your rack stays on your side of the table, outside your wall. Do not crowd your rack into the wall area.",
+ "kind": "note"
+ },
+ {
+ "id": "build_walls_step_6",
+ "number": 6,
+ "title": "Confirm the table looks balanced",
+ "body": "Pause and look around the table. If each player has one wall and one rack area, you are ready to choose East.",
+ "kind": "check"
+ }
+ ]
+ }
+ ]
+ },
+ {
+ "id": "unit_start_the_game",
+ "order": 2,
+ "title": "Choose East and begin",
+ "summary": "Learn how the game starts, who is East, and how the opening deal creates each player's rack.",
+ "lessons": [
+ {
+ "id": "lesson_dealer_draw",
+ "order": 1,
+ "title": "Choose the dealer",
+ "objective": "Use a simple draw to determine which player is East for the hand.",
+ "summary": "American Mah Jongg starts by identifying East, the dealer position for the hand.",
+ "estimated_minutes": 5,
+ "steps": [
+ {
+ "id": "dealer_draw_step_1",
+ "number": 1,
+ "title": "Understand what East means",
+ "body": "East is the dealer for the hand. The other seats are South, West, and North in order around the table.",
+ "kind": "explain"
+ },
+ {
+ "id": "dealer_draw_step_2",
+ "number": 2,
+ "title": "Prepare a simple random draw",
+ "body": "Use an agreed random method to assign seats, such as drawing wind markers or drawing seat labels prepared ahead of time.",
+ "kind": "action"
+ },
+ {
+ "id": "dealer_draw_step_3",
+ "number": 3,
+ "title": "Assign each player a wind seat",
+ "body": "Seat each player as East, South, West, or North based on the draw result.",
+ "kind": "action"
+ },
+ {
+ "id": "dealer_draw_step_4",
+ "number": 4,
+ "title": "Mark East clearly",
+ "body": "Make sure everyone knows who East is before moving on. In beginner play, say it out loud so the table stays oriented.",
+ "kind": "check"
+ },
+ {
+ "id": "dealer_draw_step_5",
+ "number": 5,
+ "title": "Remember why this matters",
+ "body": "The deal begins from East, and many table actions are described relative to East, so getting the seat order clear now prevents confusion later.",
+ "kind": "note"
+ }
+ ]
+ },
+ {
+ "id": "lesson_deal_tiles",
+ "order": 2,
+ "title": "Deal the tiles",
+ "objective": "Complete the opening deal so each player can rack their tiles and prepare for passing.",
+ "summary": "This lesson focuses on the feel of receiving tiles, placing them on the rack, and getting ready for the Charleston.",
+ "estimated_minutes": 8,
+ "steps": [
+ {
+ "id": "deal_tiles_step_1",
+ "number": 1,
+ "title": "Start from East",
+ "body": "Begin the deal with East and continue around the table in order so every player receives tiles in a steady rhythm.",
+ "kind": "action"
+ },
+ {
+ "id": "deal_tiles_step_2",
+ "number": 2,
+ "title": "Take tiles from the walls as your group uses",
+ "body": "Use the table's chosen dealing routine and keep it consistent for the whole hand. The beginner goal here is orderly setup, not speed.",
+ "kind": "action"
+ },
+ {
+ "id": "deal_tiles_step_3",
+ "number": 3,
+ "title": "Place dealt tiles onto the rack facing you",
+ "body": "As each player receives tiles, they stand them on the rack so only that player can see the tile faces.",
+ "kind": "action"
+ },
+ {
+ "id": "deal_tiles_step_4",
+ "number": 4,
+ "title": "Sort tiles into groups you can read",
+ "body": "Arrange the rack in a way that feels easy to scan, such as grouping by suit and then separating honors and special tiles.",
+ "kind": "action"
+ },
+ {
+ "id": "deal_tiles_step_5",
+ "number": 5,
+ "title": "Do not worry about making a hand yet",
+ "body": "At this stage, the learner's job is simply to hold, sort, and recognize the rack. Hand selection comes later in guided play.",
+ "kind": "note"
+ },
+ {
+ "id": "deal_tiles_step_6",
+ "number": 6,
+ "title": "Check that all players are ready to pass",
+ "body": "Once every player has their opening tiles on the rack and is settled, the table is ready for the Charleston.",
+ "kind": "check"
+ }
+ ]
+ }
+ ]
+ },
+ {
+ "id": "unit_charleston",
+ "order": 3,
+ "title": "Learn the Charleston",
+ "summary": "Practice the opening passing sequence so it feels orderly instead of intimidating.",
+ "lessons": [
+ {
+ "id": "lesson_charleston_basics",
+ "order": 1,
+ "title": "Understand the Charleston",
+ "objective": "Know what the Charleston is and how to carry out the opening passes without panic.",
+ "summary": "The Charleston is a structured tile-passing sequence before normal play begins.",
+ "estimated_minutes": 9,
+ "steps": [
+ {
+ "id": "charleston_basics_step_1",
+ "number": 1,
+ "title": "Think of the Charleston as organized passing",
+ "body": "Before regular turns begin, players pass tiles in a set sequence. This is called the Charleston.",
+ "kind": "explain"
+ },
+ {
+ "id": "charleston_basics_step_2",
+ "number": 2,
+ "title": "Choose tiles to pass from your rack",
+ "body": "When it is time to pass, select the number of tiles required by your table's Charleston step and place them face down in front of you.",
+ "kind": "action"
+ },
+ {
+ "id": "charleston_basics_step_3",
+ "number": 3,
+ "title": "Pass only when everyone is ready",
+ "body": "Wait until all players have prepared their pass, then move the tiles together in the called direction.",
+ "kind": "action"
+ },
+ {
+ "id": "charleston_basics_step_4",
+ "number": 4,
+ "title": "Receive before rearranging",
+ "body": "Bring the received tiles into your rack, then take a moment to sort again before the next pass.",
+ "kind": "action"
+ },
+ {
+ "id": "charleston_basics_step_5",
+ "number": 5,
+ "title": "Keep the table talking",
+ "body": "Beginners should say the direction out loud, such as left, across, or right, before each pass. Clear talk prevents crossed passes.",
+ "kind": "note"
+ }
+ ]
+ },
+ {
+ "id": "lesson_charleston_sequence",
+ "order": 2,
+ "title": "Walk through the first-release Charleston",
+ "objective": "Follow the beginner Charleston sequence from the first pass to the moment normal play begins.",
+ "summary": "This guided sequence gives the learner a safe, memorable way to perform the passing routine.",
+ "estimated_minutes": 10,
+ "steps": [
+ {
+ "id": "charleston_sequence_step_1",
+ "number": 1,
+ "title": "First pass: left",
+ "body": "Each player prepares the required tiles face down and passes them to the player on the left when everyone is ready.",
+ "kind": "action"
+ },
+ {
+ "id": "charleston_sequence_step_2",
+ "number": 2,
+ "title": "Second pass: across",
+ "body": "After receiving and sorting, each player prepares the next pass and sends it across the table.",
+ "kind": "action"
+ },
+ {
+ "id": "charleston_sequence_step_3",
+ "number": 3,
+ "title": "Third pass: right",
+ "body": "Repeat the same calm rhythm for the pass to the right: choose, wait, pass together, receive, and sort.",
+ "kind": "action"
+ },
+ {
+ "id": "charleston_sequence_step_4",
+ "number": 4,
+ "title": "Pause and reassess your rack",
+ "body": "At the end of the guided passing sequence, look at your rack again. The purpose is to make the rack more workable before regular turns begin.",
+ "kind": "check"
+ },
+ {
+ "id": "charleston_sequence_step_5",
+ "number": 5,
+ "title": "Know when passing is over",
+ "body": "Once the table's opening passing sequence is complete, players stop passing and the hand moves into normal turn play.",
+ "kind": "explain"
+ }
+ ]
+ }
+ ]
+ },
+ {
+ "id": "unit_first_turn",
+ "order": 4,
+ "title": "Play the opening turn",
+ "summary": "Transition from setup into live play by learning the rhythm of a normal turn and the first discard.",
+ "lessons": [
+ {
+ "id": "lesson_first_turn_flow",
+ "order": 1,
+ "title": "Take the first turn",
+ "objective": "Recognize the basic turn rhythm: draw, evaluate, and discard to continue the hand.",
+ "summary": "The first turn is where the game stops feeling like setup and starts feeling playable.",
+ "estimated_minutes": 7,
+ "steps": [
+ {
+ "id": "first_turn_flow_step_1",
+ "number": 1,
+ "title": "Begin normal play after the Charleston",
+ "body": "When the passing sequence is finished, the hand moves into regular turn-taking.",
+ "kind": "explain"
+ },
+ {
+ "id": "first_turn_flow_step_2",
+ "number": 2,
+ "title": "Draw the next tile when it is your turn",
+ "body": "The active player takes a tile in turn according to the table's draw order and adds it to the rack.",
+ "kind": "action"
+ },
+ {
+ "id": "first_turn_flow_step_3",
+ "number": 3,
+ "title": "Compare the new tile to the rack",
+ "body": "Take a breath and look at whether the drawn tile helps what you are trying to collect. Beginners should slow down here on purpose.",
+ "kind": "action"
+ },
+ {
+ "id": "first_turn_flow_step_4",
+ "number": 4,
+ "title": "Choose one tile to discard",
+ "body": "After evaluating the rack, place one unwanted tile out as your discard so play can continue to the next player.",
+ "kind": "action"
+ },
+ {
+ "id": "first_turn_flow_step_5",
+ "number": 5,
+ "title": "Keep your rack private and your discard visible",
+ "body": "Only your own rack should face you. Discards should be placed clearly so the table can see what was thrown.",
+ "kind": "note"
+ },
+ {
+ "id": "first_turn_flow_step_6",
+ "number": 6,
+ "title": "Pass the turn calmly",
+ "body": "Once the discard is out, the next player begins the same rhythm. That repeating pattern is the heartbeat of the hand.",
+ "kind": "check"
+ }
+ ]
+ }
+ ]
+ }
+ ]
+}
