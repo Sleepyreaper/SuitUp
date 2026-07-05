@@ -228,6 +228,14 @@ def create_app() -> Flask:
             payload["result"] = result
         return jsonify(payload)
 
+    @app.route("/api/game/<game_id>/roll", methods=["POST"])
+    def api_game_roll(game_id):
+        return _action(game_id, lambda g: g.roll_dice())
+
+    @app.route("/api/game/<game_id>/deal", methods=["POST"])
+    def api_game_deal(game_id):
+        return _action(game_id, lambda g: g.deal_tiles())
+
     @app.route("/api/game/<game_id>/charleston", methods=["POST"])
     def api_game_charleston(game_id):
         ids = (request.get_json(silent=True) or {}).get("tile_ids", [])

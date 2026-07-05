@@ -168,13 +168,27 @@ def test_win_moves_points_between_players():
     assert g.players[0].score == sum(before[i] - g.players[i].score for i in (1, 2, 3))
 
 
-def test_new_game_deals_correctly():
+def test_setup_phase_then_roll_and_deal():
     g = Game.new_game(seed=1)
-    assert g.phase == "charleston"
+    # a new game starts in the SETUP phase — nothing dealt yet, whole wall built
+    assert g.phase == "setup" and g.sub == "roll"
+    assert all(p.size() == 0 for p in g.players)
+    assert len(g.wall) == 152 and g.dice is None
+    r = g.roll_dice()
+    assert r["ok"] and g.dice and 2 <= g.dice["total"] <= 12 and g.sub == "deal"
+    r = g.deal_tiles()
+    assert r["ok"] and g.phase == "charleston"
     assert g.players[g.dealer_index].size() == 14
     assert all(p.size() == 13 for i, p in enumerate(g.players) if i != g.dealer_index)
-    total = sum(p.size() for p in g.players) + len(g.wall)
-    assert total == 152                      # full American set incl. 8 Flowers
+    assert sum(p.size() for p in g.players) + len(g.wall) == 152
+
+
+def test_cannot_deal_before_rolling():
+    g = Game.new_game(seed=2)
+    assert g.deal_tiles()["ok"] is False        # must roll first
+    g.roll_dice()
+    assert g.roll_dice()["ok"] is False          # can't roll twice
+    assert g.deal_tiles()["ok"] is True
 
 
 def test_flower_basket_uses_any_flowers_and_soap():
@@ -205,8 +219,11 @@ def _auto_play(g, max_steps=3000):
     """Drive the human seat with an honest auto-policy to force the hand to a
     terminal state; used to prove the engine never deadlocks and only legal wins."""
     for _ in range(max_steps):
-        if g.phase not in ("charleston", "play"):
+        if g.phase not in ("setup", "charleston", "play"):
             return
+        if g.phase == "setup":
+            g.roll_dice() if g.sub == "roll" else g.deal_tiles()
+            continue
         if g.phase == "charleston":
             if g.current_charleston():
                 me = g.players[g.human_index]

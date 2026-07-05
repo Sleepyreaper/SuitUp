@@ -77,6 +77,7 @@ class Game:
         self.dealer_index = 0
         self.turn_index = 0
         self.wall: List[Tile] = []
+        self._pending: List[Tile] = []
         self.discards: List[Tile] = []
         self.last_discard: Optional[Tile] = None
         self.last_discarder: Optional[int] = None
@@ -110,33 +111,63 @@ class Game:
                                         level=levels[li % len(levels)]))
                 li += 1
         g.dealer_index = g.human_index          # human is dealer for hand 1 (learn the flow)
-        g._deal()
+        g._start_hand(interactive=True)
         return g
 
-    def _deal(self) -> None:
+    def _start_hand(self, interactive: bool) -> None:
+        """Build the wall and enter the SETUP phase. When interactive, the player
+        rolls the dice and deals step by step (teaching the ritual); otherwise it
+        rolls and deals immediately."""
         tiles = build_tile_set(include_flowers=True)
         self.rng.shuffle(tiles)
-        # The dealer (East) rolls two dice; the total sets where the wall is broken
-        # (count that many stacks from the right) and where dealing/first-draw begin.
-        d1 = self.rng.randint(1, 6)
-        d2 = self.rng.randint(1, 6)
-        total = d1 + d2
-        self.dice = {"die1": d1, "die2": d2, "total": total}
+        self._pending = tiles
+        self.wall = list(tiles)                 # the full built wall (152) on display
+        self.dice = None
         for p in self.players:
             p.concealed = []
             p.exposures = []
-        pos = 0
-        for _ in range(START_HAND):
-            for p in self.players:
-                p.concealed.append(tiles[pos]); pos += 1
-        self.players[self.dealer_index].concealed.append(tiles[pos]); pos += 1
-        self.wall = tiles[pos:]
         self.discards = []
         self.last_discard = None
         self.last_discarder = None
         self.seen = {}
         self.winner_index = None
         self.win_info = None
+        self.charleston_queue = []
+        self.charleston_second_offered = False
+        self.phase = "setup"
+        self.sub = "roll"
+        dealer = self.players[self.dealer_index].seat
+        who = "You" if self.players[self.dealer_index].is_human else dealer
+        self._log(f"Hand {self.hand_number}: tiles shuffled and built into four walls "
+                  f"(19 long, 2 high). {who} ({dealer}) is dealer — roll to start.")
+        if not interactive:
+            self.roll_dice()
+            self.deal_tiles()
+
+    def roll_dice(self) -> dict:
+        """Dealer rolls two dice; the total decides where to break the wall."""
+        if self.phase != "setup" or self.sub != "roll":
+            return {"ok": False, "error": "There is nothing to roll right now."}
+        d1 = self.rng.randint(1, 6)
+        d2 = self.rng.randint(1, 6)
+        self.dice = {"die1": d1, "die2": d2, "total": d1 + d2}
+        self.sub = "deal"
+        who = "You" if self.players[self.dealer_index].is_human else self.players[self.dealer_index].seat
+        self._log(f"{who} rolled {d1} + {d2} = {d1 + d2}. Count {d1 + d2} stacks from the "
+                  f"right end of the dealer's wall — that's where you break it and start dealing.")
+        return {"ok": True}
+
+    def deal_tiles(self) -> dict:
+        """Break the wall at the dice count and deal: 13 to each player, 14 to East."""
+        if self.phase != "setup" or self.sub != "deal":
+            return {"ok": False, "error": "Roll the dice before dealing."}
+        tiles = self._pending
+        pos = 0
+        for _ in range(START_HAND):
+            for p in self.players:
+                p.concealed.append(tiles[pos]); pos += 1
+        self.players[self.dealer_index].concealed.append(tiles[pos]); pos += 1
+        self.wall = tiles[pos:]
         for p in self.players:
             p.concealed.sort(key=lambda t: t.identifier())
             if not p.is_human:
@@ -145,11 +176,9 @@ class Game:
         self.charleston_second_offered = False
         self.phase = "charleston"
         self.sub = ""
-        dealer = self.players[self.dealer_index].seat
-        who = "You" if self.players[self.dealer_index].is_human else dealer
-        self._log(f"Hand {self.hand_number}: {who} ({dealer}) is dealer. {who} rolled "
-                  f"{d1} + {d2} = {total} — count {total} from the right to break the wall, "
-                  f"then deal. Dealer holds 14 tiles; everyone else 13. Charleston begins.")
+        self._log("Dealt: the dealer holds 14 tiles, everyone else 13. "
+                  f"{len(self.wall)} tiles remain in the wall. The Charleston begins.")
+        return {"ok": True}
 
     # ---- charleston ----------------------------------------------------------
     def current_charleston(self) -> Optional[dict]:
@@ -587,7 +616,7 @@ class Game:
             return {"ok": False, "error": "The current hand is not over."}
         self.hand_number += 1
         self.dealer_index = self._next(self.dealer_index)
-        self._deal()
+        self._start_hand(interactive=False)      # later hands deal quickly
         return {"ok": True}
 
     # ---- serialization -------------------------------------------------------

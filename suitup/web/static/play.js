@@ -150,6 +150,16 @@
 
   function guideStep(s) {
     if (!PLAY.guided) return null;
+    if (s.phase === "setup" && s.sub === "roll") {
+      return { do: `Click “🎲 Roll the dice”.`,
+        why: "You're the dealer. Rolling two dice decides where to break the wall — it keeps the start fair and random.",
+        btn: "#rollBtn", act: "click" };
+    }
+    if (s.phase === "setup" && s.sub === "deal") {
+      return { do: `Click “Break the wall & deal”.`,
+        why: `You rolled ${s.dice ? s.dice.total : ""}. Count that many stacks from the right, set them aside, then deal 13 tiles to everyone (14 to you as dealer).`,
+        btn: "#dealBtn", act: "click" };
+    }
     if (s.phase === "charleston" && s.charleston) {
       const tiles = recommendedPass(s);
       return { do: `Pass 3 tiles to your ${s.charleston.direction.toUpperCase()}.`,
@@ -349,6 +359,7 @@
   }
 
   function phaseLabel(s) {
+    if (s.phase === "setup") return s.sub === "roll" ? "Setup — roll the dice" : "Setup — break the wall & deal";
     if (s.phase === "charleston") {
       if (s.charleston) return `Charleston — pass ${s.charleston.direction.toUpperCase()}`;
       if (s.charleston_second_offered) return "Charleston — second round?";
@@ -377,6 +388,15 @@
 
   /* ---------- action bar ---------- */
   function actionHTML(s) {
+    if (s.phase === "setup" && s.sub === "roll") {
+      return `<div class="hintline">The tiles are shuffled and built into four walls (19 long, 2 high). As dealer, roll two dice to decide where to break the wall.</div>
+        <button id="rollBtn" class="btn btn-primary">🎲 Roll the dice</button>`;
+    }
+    if (s.phase === "setup" && s.sub === "deal") {
+      const d = s.dice || {};
+      return `<div class="hintline">You rolled <strong>${d.die1} + ${d.die2} = ${d.total}</strong>. Count ${d.total} stacks from the right of the dealer's wall, set them aside, then deal 13 tiles to each player (14 to the dealer).</div>
+        <button id="dealBtn" class="btn btn-primary">Break the wall &amp; deal</button>`;
+    }
     if (s.phase === "charleston" && s.charleston) {
       return `<div class="hintline">${esc(s.charleston.note)}</div>
         <button id="passBtn" class="btn btn-primary">Pass 3 tiles (${PLAY.selected.length}/3)</button>`;
@@ -459,6 +479,7 @@
 
   /* ---------- coach overlay ---------- */
   function coachKey(s) {
+    if (s.phase === "setup") return "setup:" + s.sub;
     if (s.phase === "charleston") return s.charleston ? "charleston" : "charleston_second";
     if (s.phase === "play") {
       if (s.pending_calls && s.pending_calls.length) return "play:calls";
@@ -524,6 +545,9 @@
         };
       });
     }
+
+    on("#rollBtn", async () => { await act(`/api/game/${PLAY.id}/roll`, {}); draw(host); });
+    on("#dealBtn", async () => { await act(`/api/game/${PLAY.id}/deal`, {}); draw(host); });
 
     on("#passBtn", async () => {
       if (PLAY.selected.length !== 3) return flash(host, "Select exactly 3 tiles to pass.");

@@ -6,6 +6,22 @@
 window.SUITUP_TUTORIAL = {
   /* Short teaching note keyed by game phase/sub-phase. Shown in the Coach panel. */
   contextual: {
+    "setup:roll": {
+      title: "Setting up",
+      body:
+        "The 152 tiles are shuffled face-down and each player builds a wall 19 tiles " +
+        "long and 2 high — together they make a square. As dealer (East) you roll two " +
+        "dice; the total decides where the wall gets broken so no one can stack it.",
+      terms: ["Wall", "Dice"],
+    },
+    "setup:deal": {
+      title: "Break & deal",
+      body:
+        "Count your dice total from the RIGHT end of your wall — that's the break. " +
+        "Starting there, deal tiles around to the right until everyone has 13 and you " +
+        "(the dealer) have 14. The leftover tiles stay as the wall you'll draw from.",
+      terms: ["Wall", "Dice"],
+    },
     charleston: {
       title: "The Charleston",
       body:
@@ -98,6 +114,8 @@ window.SUITUP_TUTORIAL = {
       "wrong count makes your hand 'dead'.",
     "Honor tiles": "The Winds (E/S/W/N) and Dragons (Red/Green/White). Not part of any " +
       "number suit.",
+    "Dice": "The dealer rolls two dice at the start of every hand. The total (2–12) sets " +
+      "where the wall is broken and where dealing and the first draws begin.",
     "Flower": "A bonus tile (there are 8, all interchangeable). Flowers belong to no suit " +
       "and are used only in hands that call for them. You may NEVER pass a Flower in the " +
       "Charleston, and a Flower can't help a hand that doesn't use Flowers.",

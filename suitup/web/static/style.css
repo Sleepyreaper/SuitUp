@@ -401,3 +401,13 @@ body {
   .mj-table { grid-template-columns: 120px 1fr 120px; }
   .opp.top .opp-rack .tile.back { width: 12px; height: 17px; }
 }
+
+/* ===================== Play v5 — vertical side seats + setup ===================== */
+/* Left & right players: tiles run TOP-TO-BOTTOM (a vertical column of sideways
+   backs); top & you run left-to-right. */
+.opp.left .opp-rack, .opp.right .opp-rack { flex-direction: column; align-items: center; }
+.opp.left .opp-rack .tile.back, .opp.right .opp-rack .tile.back { width: 20px; height: 12px; margin: 1px; }
+.opp.left .opp-exp, .opp.right .opp-exp { flex-direction: column; align-items: center; }
+.slot-left, .slot-right { align-items: center; }
+.opp.left, .opp.right { display: flex; flex-direction: column; align-items: center; }
+.opp.left .opp-head, .opp.right .opp-head { justify-content: center; }
