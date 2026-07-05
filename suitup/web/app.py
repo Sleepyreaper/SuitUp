@@ -260,6 +260,12 @@ def create_app() -> Flask:
         kind = (request.get_json(silent=True) or {}).get("kind", "")
         return _action(game_id, lambda g: g.human_call(kind))
 
+    @app.route("/api/game/<game_id>/meld", methods=["POST"])
+    def api_game_meld(game_id):
+        d = request.get_json(silent=True) or {}
+        return _action(game_id, lambda g: g.human_meld(
+            d.get("identity", ""), int(d.get("size", 0))))
+
     @app.route("/api/game/<game_id>/pass-call", methods=["POST"])
     def api_game_pass_call(game_id):
         return _action(game_id, lambda g: g.human_pass_call())

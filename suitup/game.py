@@ -325,17 +325,88 @@ class Game:
             self._record_win(self.human_index, won, self_drawn=False,
                              discarder_index=self.last_discarder)
             return {"ok": True}
+        called = self.last_discard
         self._perform_claim(self.human_index, kind)
         self.pending_human_calls = []
         self.sub = "discard"
-        self._log(f"You called {kind.upper()} on {self.last_discard.display_name()}.")
+        self._log(f"You called {kind.upper()} on {called.display_name()} — "
+                  f"expose the group, then discard.")
         return {"ok": True}
+
+    def _call_advice(self) -> Dict[str, str]:
+        """For each pending human call, advise 'recommend' or 'optional'. Winning is
+        always recommended; a Pung/Kong is recommended when the tile fits the hand
+        you're closest to (it's a tile you're keeping, not deadwood)."""
+        advice: Dict[str, str] = {}
+        if not self.pending_human_calls or self.last_discard is None:
+            return advice
+        me = self.players[self.human_index]
+        keep = set(best_assessment(me.concealed).keep_ids)
+        ident = _key(self.last_discard)
+        for c in self.pending_human_calls:
+            k = c["kind"]
+            if k == "win":
+                advice[k] = "recommend"
+            elif k == "kong":
+                advice[k] = "recommend"          # kongs are strong and hard to get
+            else:
+                advice[k] = "recommend" if ident in keep else "optional"
+        return advice
 
     def human_pass_call(self) -> dict:
         self.pending_human_calls = []
         self._resolve_calls(skip_human=True)
         self._advance()
         return {"ok": True}
+
+    # ---- play: expose a Kong / Quint from your own hand on your turn ----------
+    def _meld_options(self) -> List[dict]:
+        """Groups the human can expose from their concealed hand right now (after
+        drawing, before discarding): a Kong (4) or Quint (5) of one tile, using
+        jokers to fill. This is how you actively 'play' a kong/quint like the bots."""
+        if (self.phase != "play" or self.turn_index != self.human_index
+                or self.sub != "discard"):
+            return []
+        p = self.players[self.human_index]
+        nat: Dict[str, int] = {}
+        for t in p.concealed:
+            if not is_joker(t):
+                nat[_key(t)] = nat.get(_key(t), 0) + 1
+        jokers = sum(1 for t in p.concealed if is_joker(t))
+        opts: List[dict] = []
+        for ident, n in nat.items():
+            for size, kind in ((4, "kong"), (5, "quint")):
+                use_nat = min(n, size)
+                need_j = size - use_nat
+                # a group of 3+ may use jokers, but never be mostly jokers
+                if use_nat >= size - jokers and use_nat >= (size + 1) // 2 and need_j <= jokers:
+                    opts.append({"identity": ident, "size": size, "kind": kind,
+                                 "naturals": use_nat, "jokers": need_j,
+                                 "name": self._ident_name(ident)})
+        return opts
+
+    def _ident_name(self, ident: str) -> str:
+        sample = next((t for t in build_tile_set(include_flowers=True)
+                       if _key(t) == ident), None)
+        return sample.display_name() if sample else ident
+
+    def human_meld(self, identity: str, size: int) -> dict:
+        if (self.phase != "play" or self.turn_index != self.human_index
+                or self.sub != "discard"):
+            return {"ok": False, "error": "You can only expose a group on your own turn."}
+        opt = next((o for o in self._meld_options()
+                    if o["identity"] == identity and o["size"] == size), None)
+        if not opt:
+            return {"ok": False, "error": "You cannot expose that group right now."}
+        p = self.players[self.human_index]
+        naturals = [t for t in p.concealed if not is_joker(t) and _key(t) == identity][:opt["naturals"]]
+        jokers = [t for t in p.concealed if is_joker(t)][:opt["jokers"]]
+        for t in naturals + jokers:
+            p.concealed.remove(t)
+        p.exposures.append(Exposure(group_type=opt["kind"], tiles=naturals + jokers))
+        self._log(f"You exposed a {opt['kind'].upper()} of {opt['name']}.")
+        won = self._hand_wins(p.all_tiles())
+        return {"ok": True, "can_declare_win": bool(won)}
 
     # ---- play: joker exchange (redemption) -----------------------------------
     def _exchange_options(self) -> List[dict]:
@@ -660,10 +731,12 @@ class Game:
                                           and not self.charleston_queue
                                           and self.phase == "charleston"),
             "pending_calls": [c["kind"] for c in self.pending_human_calls],
+            "call_advice": self._call_advice(),
             "joker_exchanges": self._exchange_options(),
+            "melds": self._meld_options(),
             "hint": ({"target": assess.hand.name, "target_desc": assess.hand.describe(),
                       "needed": assess.needed, "completeness": assess.completeness,
-                      "wants": assess.wants,
+                      "wants": assess.wants, "keep_ids": assess.keep_ids,
                       "deadwood": [self._tile_json(t) for t in assess.deadwood]}
                      if assess else None),
             "win_info": self.win_info,

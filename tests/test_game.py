@@ -168,6 +168,54 @@ def test_win_moves_points_between_players():
     assert g.players[0].score == sum(before[i] - g.players[i].score for i in (1, 2, 3))
 
 
+def test_human_can_call_pung_without_crashing():
+    # regression: human_call logged self.last_discard AFTER it was cleared -> crash
+    from suitup.game import Game
+    g = Game.new_game(seed=4)
+    g.roll_dice(); g.deal_tiles()
+    g.phase = "play"; g.sub = "calls"
+    b = _by_ident()
+    hi = g.human_index
+    other = (hi + 1) % 4
+    g.players[hi].concealed = b["dots_3"][:2] + b["bams_7"][:11]
+    tile = b["dots_3"][2]
+    g.last_discard = tile
+    g.last_discarder = other
+    g.discards.append(tile)
+    g.pending_human_calls = [{"kind": "pung"}]
+    r = g.human_call("pung")                       # must not raise
+    assert r["ok"]
+    assert any(e.group_type == "pung" for e in g.players[hi].exposures)
+
+
+def test_human_can_expose_kong_and_quint_on_turn():
+    from suitup.game import Game
+    b = _by_ident()
+    g = Game.new_game(seed=6)
+    g.phase = "play"; g.turn_index = g.human_index; g.sub = "discard"
+    me = g.players[g.human_index]
+    me.concealed = b["dots_5"][:4] + b["bams_2"][:3] + b["craks_9"][:3] + b["wind_east"][:4]
+    opts = g._meld_options()
+    assert any(o["kind"] == "kong" and o["identity"] == "dots_5" for o in opts)
+    assert g.human_meld("dots_5", 4)["ok"]
+    assert any(e.group_type == "kong" and len(e.tiles) == 4 for e in me.exposures)
+    # quint from 4 naturals + a joker
+    g2 = Game.new_game(seed=7)
+    g2.phase = "play"; g2.turn_index = g2.human_index; g2.sub = "discard"
+    me2 = g2.players[g2.human_index]
+    me2.concealed = b["bams_2"][:4] + [b["joker"][0]] + b["craks_9"][:3] + b["dots_5"][:3] + b["wind_east"][:3]
+    assert any(o["kind"] == "quint" for o in g2._meld_options())
+    assert g2.human_meld("bams_2", 5)["ok"]
+    assert any(len(e.tiles) == 5 for e in me2.exposures)
+
+
+def test_meld_only_on_your_discard_turn():
+    from suitup.game import Game
+    g = Game.new_game(seed=8)          # still in setup
+    assert g._meld_options() == []
+    assert g.human_meld("dots_1", 4)["ok"] is False
+
+
 def test_setup_phase_then_roll_and_deal():
     g = Game.new_game(seed=1)
     # a new game starts in the SETUP phase — nothing dealt yet, whole wall built

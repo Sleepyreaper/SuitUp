@@ -411,3 +411,38 @@ body {
 .slot-left, .slot-right { align-items: center; }
 .opp.left, .opp.right { display: flex; flex-direction: column; align-items: center; }
 .opp.left .opp-head, .opp.right .opp-head { justify-content: center; }
+
+/* ===================== Play v6 — life & polish ===================== */
+/* richer felt with a subtle vignette + center emblem */
+.mj-table {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255,255,255,.06) 0%, transparent 42%),
+    radial-gradient(ellipse at 50% 40%, #1f8a55 0%, #12633c 55%, #0c4a2d 100%);
+  position: relative;
+}
+.mj-center { position: relative; }
+
+/* dice roll animation */
+.die { animation: diceIn .5s cubic-bezier(.2,1.4,.4,1); }
+@keyframes diceIn { 0% { transform: rotate(-180deg) scale(.2); opacity: 0; } 100% { transform: none; opacity: 1; } }
+
+/* meld buttons block */
+.meld-box { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.meld-box .btn { display: block; text-align: left; margin: 6px 0; }
+.callBtn { font-size: 1rem; }
+
+/* winner glow + celebratory banner */
+.win-box { animation: winPop .5s ease-out; border: 2px solid var(--gold);
+  background: linear-gradient(135deg, #fff8e8, #eef6f0); }
+@keyframes winPop { 0% { transform: scale(.9); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.win-head { font-size: 1.2rem; }
+
+/* confetti */
+#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 999; overflow: hidden; }
+.confetti-bit { position: absolute; width: 9px; height: 14px; top: -20px; border-radius: 2px;
+  animation: fall linear forwards; }
+@keyframes fall { to { transform: translateY(105vh) rotate(720deg); opacity: .9; } }
+
+/* progress bar pulse when close */
+.coach-hint .bar span { transition: width .4s ease; }
+.coach-hint.close { outline: 2px solid var(--gold); border-radius: 8px; }

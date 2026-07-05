@@ -124,6 +124,33 @@
       <div class="action-bar" id="actionBar">${actionHTML(s)}</div>
       ${logHTML(s)}`;
     wire(host);
+    maybeCelebrate(s);
+  }
+
+  function maybeCelebrate(s) {
+    const wi = s.win_info;
+    const key = s.hand_number + ":" + (wi && wi.winner);
+    if (wi && !wi.wall_game && wi.is_human && PLAY._celebrated !== key) {
+      PLAY._celebrated = key;
+      confetti();
+    }
+  }
+
+  function confetti() {
+    const colors = ["#c8952b", "#0f5132", "#e05252", "#3f7fb0", "#d6c94a", "#57a65a"];
+    const box = document.createElement("div");
+    box.id = "confetti";
+    for (let i = 0; i < 90; i++) {
+      const b = document.createElement("span");
+      b.className = "confetti-bit";
+      b.style.left = Math.random() * 100 + "vw";
+      b.style.background = colors[i % colors.length];
+      b.style.animationDuration = (1.6 + Math.random() * 1.6) + "s";
+      b.style.animationDelay = (Math.random() * 0.5) + "s";
+      box.appendChild(b);
+    }
+    document.body.appendChild(box);
+    setTimeout(() => box.remove(), 3600);
   }
 
   /* ---------- guided walkthrough ---------- */
@@ -172,10 +199,16 @@
         btn: "#secondNo", act: "click" };
     }
     if (s.phase === "play" && s.pending_calls && s.pending_calls.length) {
+      const adv = s.call_advice || {};
       if (s.pending_calls.indexOf("win") >= 0)
         return { do: `You can WIN — click “Declare Mah Jongg!”`, btn: ".callBtn.btn-win", act: "click" };
-      return { do: `While you're learning, click “Pass”.`,
-        why: "You could call this tile to expose a group, but that reveals part of your hand and locks you in. Passing keeps you flexible.",
+      const good = s.pending_calls.find((k) => adv[k] === "recommend");
+      if (good)
+        return { do: `Call ${good.toUpperCase()} — this tile fits your hand!`,
+          why: `You hold matching tiles, so calling exposes a ${good} and jumps you closer to a win. Calling commits you to a hand that uses that group, but here it helps.`,
+          btn: `.callBtn[data-kind="${good}"]`, act: "click" };
+      return { do: `This tile doesn't fit your plan — click “Pass”.`,
+        why: "Calling would expose part of your hand and lock you toward a group you don't need. Passing keeps you flexible.",
         btn: "#passCall", act: "click" };
     }
     if (s.phase === "play" && s.your_turn && s.sub === "draw") {
@@ -188,7 +221,7 @@
         return { do: `Your hand is complete — click “Declare Mah Jongg”!`, btn: "#declareBtn", act: "click" };
       const rec = recommendedDiscard(s);
       return { do: `Discard the highlighted tile to end your turn.`,
-        why: `It's your least useful tile for your best hand${s.hint ? " (" + s.hint.target + ")" : ""}. Click it, then Discard — you'll be back to 13 tiles.`,
+        why: `It's your least useful tile for your best hand${s.hint ? " (" + s.hint.target + ")" : ""}. Click it, then Discard — you'll be back to 13 tiles. (See a Kong/Quint button? You can expose it to lock in that group.)`,
         tiles: rec ? [rec] : [], btn: "#discardBtn", act: "discard", one: rec };
     }
     if (s.phase === "hand_over")
@@ -407,12 +440,15 @@
         <button id="secondNo" class="btn btn-primary">Start playing</button>`;
     }
     if (s.phase === "play" && s.pending_calls && s.pending_calls.length) {
+      const adv = s.call_advice || {};
+      const tileName = s.last_discard ? s.last_discard.name : "a tile";
       const btns = s.pending_calls.map((k) => {
         const label = k === "win" ? "Declare Mah Jongg!" : "Call " + k.toUpperCase();
-        const cls = k === "win" ? "btn btn-win" : "btn btn-primary";
-        return `<button class="${cls} callBtn" data-kind="${k}">${label}</button>`;
+        const rec = adv[k] === "recommend";
+        const cls = k === "win" ? "btn btn-win" : (rec ? "btn btn-primary" : "btn btn-ghost");
+        return `<button class="${cls} callBtn" data-kind="${k}">${label}${rec && k !== "win" ? " ⭐" : ""}</button>`;
       }).join("");
-      return `<div class="hintline">A tile you can use was discarded.</div>${btns}
+      return `<div class="hintline"><strong>${esc(tileName)}</strong> was discarded — you hold matching tiles! Call it to expose a group, or pass.</div>${btns}
         <button id="passCall" class="btn btn-ghost">Pass</button>`;
     }
     if (s.phase === "play" && s.your_turn && s.sub === "draw") {
@@ -421,7 +457,7 @@
     if (s.phase === "play" && s.your_turn && s.sub === "discard") {
       const win = `<button id="declareBtn" class="btn btn-win">Declare Mah Jongg</button>`;
       return `<button id="discardBtn" class="btn btn-primary">Discard selected (${PLAY.selected.length}/1)</button>
-        ${(PLAY._canWin ? win : "")}${exchangeHTML(s)}`;
+        ${(PLAY._canWin ? win : "")}${meldHTML(s)}${exchangeHTML(s)}`;
     }
     if (s.phase === "hand_over") {
       return winSummaryHTML(s) + `<button id="nextHand" class="btn btn-primary">Deal next hand</button>`;
@@ -430,6 +466,16 @@
       return winSummaryHTML(s) + finalScoresHTML(s) + `<button id="quitBtn2" class="btn btn-primary">New game</button>`;
     }
     return `<div class="muted">Waiting…</div>`;
+  }
+
+  function meldHTML(s) {
+    const melds = s.melds || [];
+    if (!melds.length) return "";
+    const btns = melds.map((m, i) => {
+      const jk = m.jokers ? ` (${m.naturals}+${m.jokers} joker${m.jokers > 1 ? "s" : ""})` : "";
+      return `<button class="btn btn-ghost meldBtn" data-i="${i}">🀫 Expose ${m.kind.toUpperCase()} of ${esc(m.name)}${jk}</button>`;
+    }).join("");
+    return `<div class="meld-box"><div class="hintline">You can <strong>play a group</strong> from your hand — expose a Kong (4) or Quint (5) to lock it in, just like the bots do.</div>${btns}</div>`;
   }
 
   function exchangeHTML(s) {
@@ -492,8 +538,8 @@
   function coachHTML(s) {
     const ctx = T.contextual[coachKey(s)] || { title: "Coach", body: "", terms: [] };
     const hint = s.hint ? `
-      <div class="coach-hint">
-        <div class="coach-hint-head">Your best target</div>
+      <div class="coach-hint ${s.hint.needed <= 3 ? "close" : ""}">
+        <div class="coach-hint-head">Your best target${s.hint.needed <= 3 ? " — so close! 🔥" : ""}</div>
         <div><strong>${esc(hint_target(s))}</strong> — ${esc(s.hint.target_desc)}</div>
         <div class="bar"><span style="width:${Math.round(s.hint.completeness * 100)}%"></span></div>
         <div class="muted">${s.hint.needed} tile(s) to go · deadwood is dimmed in your rack</div>
@@ -589,6 +635,16 @@
         const r = await act(`/api/game/${PLAY.id}/exchange-joker`,
           { seat_index: e.seat_index, exposure_index: e.exposure_index, tile_id: e.tile_id });
         correct(r);
+        draw(host);
+      };
+    });
+
+    host.querySelectorAll(".meldBtn").forEach((el) => {
+      el.onclick = async () => {
+        const m = (PLAY.snap.melds || [])[+el.dataset.i];
+        if (!m) return;
+        const r = await act(`/api/game/${PLAY.id}/meld`, { identity: m.identity, size: m.size });
+        if (!correct(r) && r.result && r.result.can_declare_win) PLAY._canWin = true;
         draw(host);
       };
     });

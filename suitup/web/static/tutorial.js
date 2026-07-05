@@ -38,14 +38,6 @@ window.SUITUP_TUTORIAL = {
         "often stop after the first. Your call.",
       terms: ["Charleston"],
     },
-    "play:discard": {
-      title: "Your turn — discard",
-      body:
-        "You're holding one extra tile. Get rid of your least useful tile (your " +
-        "'deadwood', highlighted below). Click a tile, then Discard. Remember: you " +
-        "must be back to 13 tiles when your turn ends.",
-      terms: ["Discard", "Deadwood", "13-tile rule"],
-    },
     "play:draw": {
       title: "Your turn — draw",
       body:
@@ -57,10 +49,19 @@ window.SUITUP_TUTORIAL = {
     "play:calls": {
       title: "A tile was discarded — you can CALL it",
       body:
-        "Another player discarded a tile you can use. Call it to expose a Pung (3) or " +
-        "Kong (4) — you must already hold the matching tiles. Or Pass and wait for " +
-        "your turn. Calling shows part of your hand to everyone.",
+        "This is how you get ahead! You hold matching tiles, so you can grab this discard " +
+        "to expose a Pung (3) or Kong (4) and jump closer to a win. A ⭐ marks a call that " +
+        "fits your hand. Calling reveals part of your hand and commits you to a hand that " +
+        "uses that group — worth it when it helps, otherwise Pass.",
       terms: ["Call", "Pung", "Kong", "Expose"],
+    },
+    "play:discard": {
+      title: "Your turn — build and discard",
+      body:
+        "You drew a tile. If a “Expose Kong/Quint” button appears you can lock in that group " +
+        "from your hand (that's how you play kongs and quints). Otherwise discard your least " +
+        "useful tile to end the turn — you must be back to 13 tiles.",
+      terms: ["Kong", "Quint", "Discard", "13-tile rule"],
     },
     "play:watch": {
       title: "Opponents are playing",
