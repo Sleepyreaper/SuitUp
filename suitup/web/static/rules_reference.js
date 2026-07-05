@@ -438,6 +438,66 @@
  "Surviving the procedure is step one.",
  "Planning your hand on purpose is step two."
  ]
+ },
+ {
+ id: "dice_and_dealing",
+ order: 16,
+ title: "Dice, breaking the wall, and the first draw",
+ summary: "The dealer (East) rolls two dice to decide where the wall is broken and where dealing begins.",
+ facts: [
+ {
+ label: "The roll",
+ value: "East throws two dice and adds them (2–12). That total decides where to break the wall."
+ },
+ {
+ label: "Break the wall",
+ value: "Count that many stacks from the RIGHT end of East's own wall and set them aside — the deal (and the first draws) start from the break."
+ },
+ {
+ label: "Deal",
+ value: "Going counter-clockwise (to the right), each player takes tiles until everyone has 13 and East has 14. Picking always goes to the right; new walls come out to the left."
+ },
+ {
+ label: "In SuitUp",
+ value: "SuitUp rolls the dice for you and shows them by the wall, then deals a fair, reproducible hand."
+ }
+ ],
+ beginner_notes: [
+ "The dice make the break point random so no one can stack the wall.",
+ "You don't have to do the math — just know the roll is what sets the starting point."
+ ]
+ },
+ {
+ id: "scoring_and_paying",
+ order: 17,
+ title: "Points and paying up",
+ summary: "The winner is PAID by the other three players; how much depends on the hand and how it was won.",
+ facts: [
+ {
+ label: "Hand value",
+ value: "Every hand on the card has a point value printed next to it (harder hands are worth more). SuitUp's hands use the same 25–75 range."
+ },
+ {
+ label: "Won on a discard",
+ value: "The player who THREW the winning tile pays DOUBLE the hand value; the other two pay the single value."
+ },
+ {
+ label: "Self-pick (picked from the wall)",
+ value: "If you draw your own winning tile, ALL THREE players pay double — self-picking is rewarded."
+ },
+ {
+ label: "Jokerless",
+ value: "A hand made with NO jokers doubles the whole payout again."
+ },
+ {
+ label: "Wall game / dead hands",
+ value: "If the wall runs out with no winner, nobody pays. A dead hand pays nothing."
+ }
+ ],
+ beginner_notes: [
+ "At the table you settle with coins or chips right after each hand.",
+ "Watch what you discard late in a hand — throwing the winning tile costs you double."
+ ]
  }
  ],
  quick_reference: {

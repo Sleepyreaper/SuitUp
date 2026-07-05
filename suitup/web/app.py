@@ -196,7 +196,7 @@ def create_app() -> Flask:
             seed = int(seed) if seed is not None else None
         except (TypeError, ValueError):
             seed = None
-        target = data.get("target_score", 150)
+        target = data.get("target_score", 500)
         try:
             target = max(25, int(target))
         except (TypeError, ValueError):

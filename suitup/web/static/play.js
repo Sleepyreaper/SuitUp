@@ -115,7 +115,6 @@
           <div class="mj-center">
             <div class="phase-banner ${s.your_turn ? "you-turn" : ""}">${esc(phaseLabel(s))}</div>
             ${wallHTML(s)}
-            ${discardHTML(s)}
           </div>
           <div class="seat-slot slot-you">${youPanel(s)}</div>
         </div>
@@ -269,23 +268,41 @@
     </div>`;
   }
 
-  function wallHTML(s) {
-    const n = s.wall_remaining;
-    return `<div class="wall">
-      <div class="wall-label">🀫 Wall — <strong>${n}</strong> tiles left</div>
-      <div class="wall-tiles">${backHTML(n, "wall")}</div>
+  const DICE_FACES = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+  function diceHTML(d) {
+    if (!d) return "";
+    return `<div class="dice-roll" title="The dealer's roll sets where the wall is broken">
+      <span class="die">${DICE_FACES[d.die1] || d.die1}</span>
+      <span class="die">${DICE_FACES[d.die2] || d.die2}</span>
+      <span class="dice-total">= ${d.total}</span>
     </div>`;
   }
 
-  function discardHTML(s) {
+  function wallHTML(s) {
+    const n = s.wall_remaining;
+    const stacks = Math.ceil(n / 2);                 // real walls are stacked 2 high
+    const per = Math.ceil(stacks / 4);
+    let rem = stacks;
+    const take = () => { const k = Math.max(0, Math.min(per, rem)); rem -= k; return k; };
+    const top = take(), right = take(), bottom = take(), left = Math.max(0, rem);
+    const stk = (k, cls) => { let o = ""; for (let i = 0; i < k; i++) o += `<span class="wall-stack ${cls}"></span>`; return o; };
     const last = s.discards.length - 1;
     const disc = s.discards.length
       ? s.discards.map((t, i) => tileHTML(t, { discard: true, fresh: i === last })).join("")
       : `<span class="muted">no discards yet</span>`;
-    const who = s.last_discarder ? ` · last by ${esc(s.last_discarder)}` : "";
-    return `<div class="discards">
-      <div class="discards-label">Discards${who}</div>
-      <div class="discard-grid">${disc}</div>
+    return `<div class="wall-area">
+      ${diceHTML(s.dice)}
+      <div class="wall-ring">
+        <div class="wr-top">${stk(top, "h")}</div>
+        <div class="wr-left">${stk(left, "v")}</div>
+        <div class="wr-center">
+          <div class="discards-label">Discards${s.last_discarder ? " · last by " + esc(s.last_discarder) : ""}</div>
+          <div class="discard-grid">${disc}</div>
+        </div>
+        <div class="wr-right">${stk(right, "v")}</div>
+        <div class="wr-bottom">${stk(bottom, "h")}</div>
+      </div>
+      <div class="wall-label">🀫 Wall — <strong>${n}</strong> tiles (${stacks} stacks, 2 high)</div>
     </div>`;
   }
 
@@ -407,15 +424,23 @@
   function winSummaryHTML(s) {
     const wi = s.win_info;
     if (!wi) return "";
-    if (wi.wall_game) return `<div class="win-box">🁢 Wall game — the wall ran out. A draw, no score.</div>`;
+    if (wi.wall_game) return `<div class="win-box">🁢 Wall game — the wall ran out. A draw, nobody pays.</div>`;
     const sc = wi.scoring;
     const who = wi.is_human ? "You" : esc(wi.winner);
     const tiles = (wi.hand_tiles || []).map((t) => tileHTML(t)).join("");
-    const bonus = (sc.bonuses || []).map((b) => `+${b.points} ${esc(b.label)}`).join(", ");
+    const dbl = [];
+    if (sc.self_drawn) dbl.push("self-pick ×2");
+    if (sc.jokerless) dbl.push("jokerless ×2");
+    const lines = (sc.lines || []).map((l) =>
+      `<div class="pay-line"><span>${esc(l.seat)}</span> pays <strong>${l.amount}</strong> <span class="muted">(${esc(l.reason)})</span></div>`).join("");
     return `<div class="win-box">
-      <div class="win-head">🎉 ${who} won — ${esc(sc.hand_name)} (+${sc.total} pts)</div>
+      <div class="win-head">🎉 ${who} won — ${esc(sc.hand_name)}</div>
       <div class="win-tiles">${tiles}</div>
-      <div class="win-score">Base ${sc.base}${bonus ? " · " + esc(bonus) : ""} · Jokers used: ${sc.jokers_used}</div>
+      <div class="win-score">Hand value ${sc.value}${dbl.length ? " · " + dbl.join(" · ") : ""} · jokers used ${sc.jokers_used}</div>
+      <div class="settlement">
+        <div class="pay-head">💰 Settlement — ${who} collects <strong>${sc.total}</strong>:</div>
+        ${lines}
+      </div>
     </div>`;
   }
 

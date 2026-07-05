@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from suitup.tiles import build_tile_set, is_joker, is_flower
 from suitup.hands import (matches_hand, is_winning, hand_by_id, best_assessment,
                           assess_hand, WINNING_HANDS, AI_TARGET_HANDS)
-from suitup.scoring import score_win
+from suitup.scoring import settle_win
 from suitup.game import Game
 
 
@@ -126,13 +126,46 @@ def _id_of(t):
     return t.identifier().rsplit("_c", 1)[0]
 
 
-def test_score_win_bonuses():
+def test_settle_self_pick_jokerless_doubles():
     b = _by_ident()
     tiles = (b["dots_1"][:3] + b["dots_2"][:3] + b["bams_5"][:3]
              + b["craks_9"][:3] + b["wind_east"][:2])
-    s = score_win(hand_by_id("four_pungs"), tiles, self_drawn=True)
-    assert s["jokers_used"] == 0
-    assert s["total"] == hand_by_id("four_pungs").points + 20  # self-draw + jokerless
+    val = hand_by_id("four_pungs").points
+    s = settle_win(hand_by_id("four_pungs"), tiles, winner_index=0,
+                   self_drawn=True, discarder_index=None)
+    assert s["jokerless"] and s["jokers_used"] == 0
+    # self-pick x2 and jokerless x2 -> each of 3 losers pays val*4
+    assert all(a == val * 4 for a in s["payments"].values())
+    assert s["total"] == val * 4 * 3
+
+
+def test_settle_discard_thrower_pays_double():
+    b = _by_ident()
+    jok = b["joker"]
+    tiles = (b["dots_1"][:2] + [jok[0]] + b["dots_2"][:3] + b["bams_5"][:3]
+             + b["craks_9"][:3] + b["wind_east"][:2])          # uses a joker -> not jokerless
+    val = hand_by_id("four_pungs").points
+    s = settle_win(hand_by_id("four_pungs"), tiles, winner_index=0,
+                   self_drawn=False, discarder_index=2)
+    assert not s["jokerless"]
+    assert s["payments"][2] == val * 2                          # thrower pays double
+    assert s["payments"][1] == val and s["payments"][3] == val  # others single
+    assert s["total"] == val * 4
+
+
+def test_win_moves_points_between_players():
+    g = Game.new_game(seed=5)
+    before = [p.score for p in g.players]
+    hand = hand_by_id("four_pungs")
+    b = _by_ident()
+    g.players[0].concealed = (b["dots_1"][:3] + b["dots_2"][:3] + b["bams_5"][:3]
+                              + b["craks_9"][:3] + b["wind_east"][:2])
+    g.players[0].exposures = []
+    g._record_win(0, hand, self_drawn=True)
+    assert g.players[0].score > before[0]                       # winner gains
+    assert all(g.players[i].score < before[i] for i in (1, 2, 3))  # losers pay
+    # zero-sum: winner's gain equals total losses
+    assert g.players[0].score == sum(before[i] - g.players[i].score for i in (1, 2, 3))
 
 
 def test_new_game_deals_correctly():

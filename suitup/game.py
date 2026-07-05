@@ -19,7 +19,7 @@ from suitup.charleston import charleston_sequence, illegal_pass_tiles
 from suitup.groups import _non_joker_key
 from suitup.hands import (AI_TARGET_HANDS, WINNING_HANDS, assess_hand,
                           best_assessment, matches_hand, winning_hands_for)
-from suitup.scoring import score_win
+from suitup.scoring import settle_win
 from suitup.tiles import Tile, build_tile_set, is_joker, is_flower
 
 SEATS = ["East", "South", "West", "North"]
@@ -80,6 +80,7 @@ class Game:
         self.discards: List[Tile] = []
         self.last_discard: Optional[Tile] = None
         self.last_discarder: Optional[int] = None
+        self.dice: Optional[dict] = None
         self.seen: Dict[str, int] = {}
         self.phase = "setup"                 # setup|charleston|play|hand_over|game_over
         self.sub = ""                        # draw|discard|calls
@@ -89,13 +90,13 @@ class Game:
         self.hand_number = 1
         self.winner_index: Optional[int] = None
         self.win_info: Optional[dict] = None
-        self.target_score = 150
+        self.target_score = 500
         self.pending_human_calls: List[dict] = []
 
     # ---- setup ---------------------------------------------------------------
     @classmethod
     def new_game(cls, human_seat: str = "East", ai_levels: Optional[List[int]] = None,
-                 seed: Optional[int] = None, target_score: int = 150) -> "Game":
+                 seed: Optional[int] = None, target_score: int = 500) -> "Game":
         g = cls(seed=seed)
         g.target_score = target_score
         levels = ai_levels or [1, 2, 3]
@@ -115,6 +116,12 @@ class Game:
     def _deal(self) -> None:
         tiles = build_tile_set(include_flowers=True)
         self.rng.shuffle(tiles)
+        # The dealer (East) rolls two dice; the total sets where the wall is broken
+        # (count that many stacks from the right) and where dealing/first-draw begin.
+        d1 = self.rng.randint(1, 6)
+        d2 = self.rng.randint(1, 6)
+        total = d1 + d2
+        self.dice = {"die1": d1, "die2": d2, "total": total}
         for p in self.players:
             p.concealed = []
             p.exposures = []
@@ -138,8 +145,11 @@ class Game:
         self.charleston_second_offered = False
         self.phase = "charleston"
         self.sub = ""
-        self._log(f"Hand {self.hand_number}: {self.players[self.dealer_index].seat} is dealer "
-                  f"and starts with 14 tiles. Charleston begins.")
+        dealer = self.players[self.dealer_index].seat
+        who = "You" if self.players[self.dealer_index].is_human else dealer
+        self._log(f"Hand {self.hand_number}: {who} ({dealer}) is dealer. {who} rolled "
+                  f"{d1} + {d2} = {total} — count {total} from the right to break the wall, "
+                  f"then deal. Dealer holds 14 tiles; everyone else 13. Charleston begins.")
 
     # ---- charleston ----------------------------------------------------------
     def current_charleston(self) -> Optional[dict]:
@@ -283,7 +293,8 @@ class Game:
             won = self._hand_wins(self.players[self.human_index].all_tiles()
                                   + [self.last_discard])
             self.players[self.human_index].concealed.append(self.last_discard)
-            self._record_win(self.human_index, won, self_drawn=False)
+            self._record_win(self.human_index, won, self_drawn=False,
+                             discarder_index=self.last_discarder)
             return {"ok": True}
         self._perform_claim(self.human_index, kind)
         self.pending_human_calls = []
@@ -519,7 +530,8 @@ class Game:
             i = winners[0]
             won = self._hand_wins(self.players[i].all_tiles() + [tile])
             self.players[i].concealed.append(tile)
-            self._record_win(i, won, self_drawn=False)
+            self._record_win(i, won, self_drawn=False,
+                             discarder_index=self.last_discarder)
             return False
         if exposers:
             i, kind = exposers[0]
@@ -544,20 +556,29 @@ class Game:
         self._log("The wall is exhausted — this hand is a draw (wall game). No score.")
         return {"ok": True, "wall_game": True}
 
-    def _record_win(self, i: int, hand, self_drawn: bool) -> None:
+    def _record_win(self, i: int, hand, self_drawn: bool,
+                    discarder_index: Optional[int] = None) -> None:
         p = self.players[i]
-        breakdown = score_win(hand, p.all_tiles(), self_drawn)
-        p.score += breakdown["total"]
+        settle = settle_win(hand, p.all_tiles(), winner_index=i,
+                            self_drawn=self_drawn, discarder_index=discarder_index)
+        p.score += settle["total"]
         p.hands_won += 1
+        for loser, amount in settle["payments"].items():
+            self.players[loser].score -= amount
+        # decorate payment lines with seat names for the UI
+        for ln in settle["lines"]:
+            ln["seat"] = self.players[ln["seat_index"]].seat
         self.winner_index = i
         self.phase = "hand_over"
         self.pending_human_calls = []
         self.win_info = {"wall_game": False, "winner": p.seat,
-                         "is_human": p.is_human, "scoring": breakdown,
+                         "is_human": p.is_human, "scoring": settle,
                          "hand_tiles": [{"id": t.identifier(), "name": t.display_name(),
                                          "joker": is_joker(t)} for t in p.all_tiles()]}
         who = "You" if p.is_human else p.seat
-        self._log(f"MAH JONGG! {who} won with {hand.name} (+{breakdown['total']} pts).")
+        how = "self-picked" if self_drawn else "on a discard"
+        self._log(f"MAH JONGG! {who} won with {hand.name} {how} — collects "
+                  f"{settle['total']} pts.")
         if any(pl.score >= self.target_score for pl in self.players):
             self.phase = "game_over"
 
@@ -591,6 +612,7 @@ class Game:
             "phase": self.phase, "sub": self.sub,
             "hand_number": self.hand_number, "target_score": self.target_score,
             "dealer": self.players[self.dealer_index].seat,
+            "dice": self.dice,
             "turn": self.players[self.turn_index].seat if self.phase == "play" else None,
             "your_turn": self.turn_index == self.human_index and self.phase == "play",
             "wall_remaining": len(self.wall),
