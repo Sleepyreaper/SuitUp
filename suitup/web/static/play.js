@@ -5,7 +5,12 @@
    stateful /api/game/* endpoints. Dependency-free vanilla JS. */
 (function () {
   const T = window.SUITUP_TUTORIAL || { contextual: {}, glossary: {}, intro: {} };
-  const PLAY = { id: null, snap: null, selected: [], coach: true, guided: true, level: "mixed" };
+  const PLAY = { id: null, snap: null, selected: [], coach: true, guided: true, level: "mixed",
+    d3: (localStorage.getItem("suitup_3d") !== "off") };
+
+  // Re-render once the 3D module finishes loading (module scripts load async).
+  window.__on3DReady = () => { if (PLAY.id) { const h = document.getElementById("view"); if (h) draw(h); } };
+  function has3D() { return PLAY.d3 && window.SuitUp3D && window.SuitUp3D.available(); }
 
   const LEVELS = {
     easy: [1, 1, 1], mixed: [1, 2, 3], hard: [3, 3, 3],
@@ -101,6 +106,7 @@
           <strong>Hand ${s.hand_number}</strong> · Dealer ${esc(s.dealer)} · Target ${s.target_score} pts
         </div>
         <div class="tbl-actions">
+          <button id="toggle3d" class="btn btn-ghost">${PLAY.d3 ? "◧ 2D" : "◉ 3D"}</button>
           <button id="guideToggle" class="btn btn-ghost">${PLAY.guided ? "Guidance: ON" : "Guidance: off"}</button>
           <button id="coachToggle" class="btn btn-ghost">${PLAY.coach ? "Hide" : "Show"} Coach</button>
           <button id="quitBtn" class="btn btn-ghost">New Game</button>
@@ -108,7 +114,9 @@
       </div>
       ${PLAY.guided && step ? guideBannerHTML(step) : ""}
       <div class="mj-wrap">
-        <div class="mj-table">
+        ${has3D()
+          ? `<div class="gl-mount" id="glMount"></div>`
+          : `<div class="mj-table">
           <div class="seat-slot slot-top">${oppPanel(POS(s).top, "top")}</div>
           <div class="seat-slot slot-left">${oppPanel(POS(s).left, "left")}</div>
           <div class="seat-slot slot-right">${oppPanel(POS(s).right, "right")}</div>
@@ -117,14 +125,48 @@
             ${wallHTML(s)}
           </div>
           <div class="seat-slot slot-you">${youPanel(s)}</div>
-        </div>
+        </div>`}
         ${PLAY.coach ? coachHTML(s) : ""}
       </div>
       ${correctionHTML()}
       <div class="action-bar" id="actionBar">${actionHTML(s)}</div>
       ${logHTML(s)}`;
     wire(host);
+    mount3D(host, s);
     maybeCelebrate(s);
+  }
+
+  function mount3D(host, s) {
+    if (!has3D()) return;
+    const el = host.querySelector("#glMount");
+    if (!el) return;
+    try {
+      if (!window.SuitUp3D._inited) { window.SuitUp3D._inited = window.SuitUp3D.init(); }
+      if (!window.SuitUp3D._inited) throw new Error(window.SuitUp3D.lastError() || "init failed");
+      window.SuitUp3D.mount(el);
+      window.SuitUp3D.update(s, {
+        selected: PLAY.selected,
+        onTilePick: (id) => {
+          if (!canSelectTiles(s)) return;
+          const i = PLAY.selected.indexOf(id);
+          if (i >= 0) PLAY.selected.splice(i, 1);
+          else if (PLAY.selected.length < maxSelect(s)) PLAY.selected.push(id);
+          draw(host);
+        },
+      });
+    } catch (e) {
+      PLAY.d3 = false; localStorage.setItem("suitup_3d", "off");
+      flashNote("3D unavailable on this device — using the 2D table.");
+      draw(host);
+    }
+  }
+
+  function flashNote(msg) {
+    const n = document.createElement("div");
+    n.className = "flash"; n.textContent = msg;
+    n.style.cssText = "position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1000";
+    document.body.appendChild(n);
+    setTimeout(() => n.remove(), 3000);
   }
 
   function maybeCelebrate(s) {
@@ -566,6 +608,11 @@
     const on = (id, fn) => { const e = q(id); if (e) e.onclick = fn; };
 
     on("#coachToggle", () => { PLAY.coach = !PLAY.coach; draw(host); });
+    on("#toggle3d", () => {
+      PLAY.d3 = !PLAY.d3;
+      localStorage.setItem("suitup_3d", PLAY.d3 ? "on" : "off");
+      draw(host);
+    });
     on("#guideToggle", () => { PLAY.guided = !PLAY.guided; draw(host); });
     on("#guideOff", () => { PLAY.guided = false; draw(host); });
     on("#guideDo", () => doGuided(host));
@@ -674,6 +721,10 @@
     bar.prepend(n);
     setTimeout(() => n.remove(), 2600);
   }
+
+  window.addEventListener("resize", () => {
+    if (has3D() && window.SuitUp3D._inited) window.SuitUp3D.resize();
+  });
 
   window.renderPlay = renderPlay;
 })();

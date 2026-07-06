@@ -446,3 +446,10 @@ body {
 /* progress bar pulse when close */
 .coach-hint .bar span { transition: width .4s ease; }
 .coach-hint.close { outline: 2px solid var(--gold); border-radius: 8px; }
+
+/* ===================== 3D (WebGL) table mount ===================== */
+.gl-mount { flex: 1 1 auto; min-width: 0; height: 62vh; min-height: 440px;
+  border-radius: 14px; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #14503300, #0c2f1f);
+  box-shadow: var(--shadow); cursor: grab; }
+.gl-mount:active { cursor: grabbing; }
+@media (max-width: 900px) { .gl-mount { height: 52vh; min-height: 340px; } }
