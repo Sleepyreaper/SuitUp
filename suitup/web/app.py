@@ -108,6 +108,10 @@ def create_app() -> Flask:
     def healthz():
         return jsonify({"status": "ok"})
 
+    @app.route("/favicon.ico")
+    def favicon():
+        return ("", 204)
+
     @app.route("/api/tiles")
     def api_tiles():
         """Every unique tile face (one per identity, not all copies) with art."""

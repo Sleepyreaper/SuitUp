@@ -11,7 +11,7 @@ const IVORY = 0xf6efe0, EDGE = 0xdccba6, BACKCOL = 0x148a52, BACKDK = 0x0b3f27;
 let renderer, scene, camera, raf, mount, ready = false, lastErr = null;
 let rackGroup, oppGroup, wallGroup, discardGroup, diceGroup, tableGroup;
 let raycaster, pointer, pickables = [], onPick = null;
-let camOrbit = { theta: 0, phi: 0.9, r: 13.2, target: new THREE.Vector3(0, 0.55, 0.9) };
+let camOrbit = { theta: 0, phi: 0.92, r: 15.2, target: new THREE.Vector3(0, 0.5, 0.8) };
 let drag = null;
 const texCache = new Map();
 const anims = [];
@@ -42,11 +42,11 @@ function backTexture() {
 function faceTexture(tile) {
   const key = (tile.id || "").replace(/_c\d+$/, "");
   if (texCache.has(key)) return texCache.get(key);
-  const c = document.createElement("canvas"); c.width = 160; c.height = 214;
+  const c = document.createElement("canvas"); c.width = 256; c.height = 342;
   const x = c.getContext("2d");
   x.fillStyle = "#fbf7ec"; x.fillRect(0, 0, c.width, c.height);
   const tex = new THREE.CanvasTexture(c);
-  tex.anisotropy = 4;
+  tex.anisotropy = 8;
   texCache.set(key, tex);
   if (tile.svg) {
     const img = new Image();
@@ -54,7 +54,7 @@ function faceTexture(tile) {
       try {
         x.clearRect(0, 0, c.width, c.height);
         x.fillStyle = "#fbf7ec"; x.fillRect(0, 0, c.width, c.height);
-        const pad = 8;
+        const pad = 12;
         x.drawImage(img, pad, pad, c.width - 2 * pad, c.height - 2 * pad);
         tex.needsUpdate = true;
       } catch (e) {}
@@ -92,7 +92,7 @@ function makeTile(tile, faceUp) {
 function build() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0c2f1f);
-  camera = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
+  camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
 
   const hemi = new THREE.HemisphereLight(0xffffff, 0x2a5540, 0.75);
   scene.add(hemi);
@@ -157,14 +157,14 @@ function layoutRack(snap) {
   const tiles = (snap.you && snap.you.concealed) || [];
   const sel = new Set(currentSelected);
   const dead = new Set(((snap.hint && snap.hint.deadwood) || []).map((t) => t.id));
-  const RS = 0.92;                                  // rack tile scale so all ~14 fit
-  const sp = TILE.w * RS + 0.05;
+  const RS = 0.86;                                  // rack tile scale so all ~14 fit in view
+  const sp = TILE.w * RS + 0.045;
   const x0 = -((tiles.length - 1) * sp) / 2;
   tiles.forEach((t, i) => {
     const m = makeTile(t, true);
     m.scale.set(RS, RS, RS);
-    m.position.set(x0 + i * sp, 0.8, 4.5);
-    m.rotation.x = -0.72;                          // lean back so faces angle up to the camera
+    m.position.set(x0 + i * sp, 0.78, 4.7);
+    m.rotation.x = -0.7;                           // lean back so faces angle up to the camera
     if (sel.has(t.id)) {
       m.position.y += 0.5; m.position.z -= 0.3;
       m.material[4].emissive = new THREE.Color(0xc8952b);
@@ -230,23 +230,26 @@ function layoutWall(snap) {
   clear(wallGroup);
   const stacks = Math.ceil((snap.wall_remaining || 0) / 2);
   const S = 0.5;                                    // wall tiles are small
-  const side = 3.0, perSide = Math.ceil(stacks / 4);
+  const side = 3.15;                               // ring radius
+  const perSide = Math.min(Math.ceil(stacks / 4), 12);
+  const sp = TILE.w * S + 0.04;
   let placed = 0;
   const edges = [
-    { ax: "x", z: -side, dir: 1 }, { ax: "z", x: side, dir: 1 },
-    { ax: "x", z: side, dir: -1 }, { ax: "z", x: -side, dir: -1 },
+    { ax: "x", perp: -side }, { ax: "z", perp: side },
+    { ax: "x", perp: side }, { ax: "z", perp: -side },
   ];
-  const sp = TILE.w * S + 0.02;
   edges.forEach((e) => {
-    for (let i = 0; i < perSide && placed < stacks; i++, placed++) {
-      const off = (i - (perSide - 1) / 2) * sp * e.dir;
+    const n = Math.min(perSide, stacks - placed);
+    const x0 = -((n - 1) * sp) / 2;                 // centered, inset from corners
+    for (let i = 0; i < n; i++, placed++) {
+      const off = x0 + i * sp;
       for (let h = 0; h < 2; h++) {
         const m = makeTile(null, false);
         m.scale.set(S, S, S);
         m.rotation.x = Math.PI / 2;                 // lie flat, face down
         const y = 0.1 + h * (TILE.t * S + 0.01);
-        if (e.ax === "x") m.position.set(off, y, e.z);
-        else { m.rotation.z = Math.PI / 2; m.position.set(e.x, y, off); }
+        if (e.ax === "x") m.position.set(off, y, e.perp);
+        else { m.rotation.z = Math.PI / 2; m.position.set(e.perp, y, off); }
         wallGroup.add(m);
       }
     }
@@ -361,6 +364,21 @@ function onUp(ev) {
   const hit = raycaster.intersectObjects(pickables, false)[0];
   if (hit && hit.object.userData.tileId) onPick(hit.object.userData.tileId);
 }
+function onWheel(ev) {
+  ev.preventDefault();
+  camOrbit.r = Math.max(7, Math.min(24, camOrbit.r + ev.deltaY * 0.012));
+}
+// pinch-to-zoom on touch
+let pinch = null;
+function onTouchMove(ev) {
+  if (ev.touches && ev.touches.length === 2) {
+    const d = Math.hypot(ev.touches[0].clientX - ev.touches[1].clientX,
+                         ev.touches[0].clientY - ev.touches[1].clientY);
+    if (pinch != null) camOrbit.r = Math.max(7, Math.min(24, camOrbit.r - (d - pinch) * 0.02));
+    pinch = d; ev.preventDefault();
+  }
+}
+function onTouchEnd() { pinch = null; }
 
 /* ---------- public API ---------- */
 let currentSelected = [];
@@ -377,6 +395,9 @@ const API = {
       build();
       const el = renderer.domElement;
       el.addEventListener("pointerdown", onDown);
+      el.addEventListener("wheel", onWheel, { passive: false });
+      el.addEventListener("touchmove", onTouchMove, { passive: false });
+      el.addEventListener("touchend", onTouchEnd);
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
       ready = true;

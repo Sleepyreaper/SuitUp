@@ -59,6 +59,21 @@ FONT_STACK: str = (
     "Helvetica, Arial, sans-serif"
 )
 
+# CJK-capable font stack for authentic crak / wind / dragon glyphs. Falls back
+# gracefully across macOS, Windows, Linux, and container browsers.
+CJK_FONT: str = (
+    "'Hiragino Sans', 'PingFang SC', 'Hiragino Kaku Gothic Pro', "
+    "'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', "
+    "'WenQuanYi Zen Hei', sans-serif"
+)
+
+# Chinese numerals used on Character (crak) tiles.
+CJK_NUMERALS = {
+    1: "一", 2: "二", 3: "三", 4: "四", 5: "五",
+    6: "六", 7: "七", 8: "八", 9: "九",
+}
+WIND_CJK = {Wind.EAST: "東", Wind.SOUTH: "南", Wind.WEST: "西", Wind.NORTH: "北"}
+
 # Base tile "ivory" body and border, shared by every tile kind so the
 # whole rack reads as one physical set instead of a grab-bag of styles.
 COLOR_BODY: str = "#f6efe0"
@@ -154,13 +169,16 @@ def _svg_open(extra_class: str = "") -> str:
 
 
 def _tile_frame() -> str:
-    """Shared rounded-rect tile body + inner border, drawn under every face."""
+    """Shared rounded-rect tile body with a soft bevel, drawn under every face."""
     return (
         f'<rect x="1" y="1" width="{TILE_WIDTH - 2}" height="{TILE_HEIGHT - 2}" '
-        f'rx="10" ry="10" fill="{COLOR_BODY}" stroke="{COLOR_BORDER}" '
+        f'rx="11" ry="11" fill="{COLOR_BODY}" stroke="{COLOR_BORDER}" '
         'stroke-width="2"/>'
-        f'<rect x="6" y="6" width="{TILE_WIDTH - 12}" height="{TILE_HEIGHT - 12}" '
-        f'rx="6" ry="6" fill="none" stroke="{COLOR_BODY_SHADOW}" stroke-width="1"/>'
+        # top highlight + bottom shadow give a subtle carved-ivory bevel
+        f'<rect x="4" y="4" width="{TILE_WIDTH - 8}" height="{TILE_HEIGHT - 8}" '
+        f'rx="8" ry="8" fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="2"/>'
+        f'<rect x="6" y="7" width="{TILE_WIDTH - 12}" height="{TILE_HEIGHT - 12}" '
+        f'rx="6" ry="6" fill="none" stroke="{COLOR_BODY_SHADOW}" stroke-width="1.5"/>'
     )
 
 
@@ -173,23 +191,48 @@ def _corner_number(text: str, color: str) -> str:
 
 
 def _center_pip_circles(count: int, color: str) -> str:
-    """Draw `count` circle pips (used for the Dots suit)."""
+    """Draw `count` coin-style dot pips (used for the Dots suit): a ringed disc
+    with a light center, so it reads like an authentic 'circle' tile."""
     layout = _PIP_LAYOUTS.get(count, _PIP_LAYOUTS[9])
     area_x0, area_y0 = 18.0, 30.0
     area_w, area_h = TILE_WIDTH - 36.0, TILE_HEIGHT - 60.0
-    circles: List[str] = []
+    r = 8.0 if count <= 3 else (7.0 if count <= 6 else 6.0)
+    out: List[str] = []
     for fx, fy in layout:
         cx = area_x0 + fx * area_w
         cy = area_y0 + fy * area_h
-        circles.append(
-            f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="6.5" fill="{color}" '
-            f'stroke="{COLOR_BORDER}" stroke-width="0.75"/>'
+        out.append(
+            f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" fill="{color}" '
+            f'stroke="{COLOR_BORDER}" stroke-width="0.8"/>'
+            f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r * 0.55:.1f}" '
+            f'fill="#fbf7ec" fill-opacity="0.9"/>'
+            f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r * 0.26:.1f}" fill="{color}"/>'
         )
-    return "".join(circles)
+    return "".join(out)
+
+
+def _one_bam_bird(color: str) -> str:
+    """The traditional 1-Bam is a bird — a small original stylized sparrow."""
+    cx, cy = TILE_WIDTH / 2, TILE_HEIGHT / 2 - 4
+    red = COLOR_CRAKS
+    return (
+        f'<ellipse cx="{cx}" cy="{cy + 6}" rx="15" ry="20" fill="{color}" '
+        f'stroke="{COLOR_BORDER}" stroke-width="1"/>'
+        f'<circle cx="{cx}" cy="{cy - 16}" r="9" fill="{color}" '
+        f'stroke="{COLOR_BORDER}" stroke-width="1"/>'
+        f'<path d="M {cx - 9} {cy - 18} L {cx - 20} {cy - 24} L {cx - 8} {cy - 12} Z" '
+        f'fill="{red}"/>'
+        f'<circle cx="{cx + 2}" cy="{cy - 17}" r="2" fill="#1c2733"/>'
+        f'<path d="M {cx + 8} {cy - 15} l 10 -3 l -9 6 Z" fill="{red}"/>'
+        f'<path d="M {cx} {cy + 24} l -7 14 M {cx} {cy + 24} l 7 14" '
+        f'stroke="{red}" stroke-width="2.5" fill="none" stroke-linecap="round"/>'
+    )
 
 
 def _center_bam_stalks(count: int, color: str) -> str:
-    """Draw `count` bamboo-stalk pips (used for the Bams suit)."""
+    """Draw `count` bamboo-stalk pips (used for the Bams suit); 1-Bam is a bird."""
+    if count == 1:
+        return _one_bam_bird(color)
     layout = _PIP_LAYOUTS.get(count, _PIP_LAYOUTS[9])
     area_x0, area_y0 = 18.0, 30.0
     area_w, area_h = TILE_WIDTH - 36.0, TILE_HEIGHT - 60.0
@@ -197,42 +240,34 @@ def _center_bam_stalks(count: int, color: str) -> str:
     for fx, fy in layout:
         cx = area_x0 + fx * area_w
         cy = area_y0 + fy * area_h
-        x0 = cx - 3.0
-        y0 = cy - 8.0
+        x0 = cx - 3.5
+        top = cy - 11.0
         stalks.append(
-            f'<rect x="{x0:.1f}" y="{y0:.1f}" width="6" height="16" rx="2.5" '
-            f'fill="{color}" stroke="{COLOR_BORDER}" stroke-width="0.75"/>'
-            f'<line x1="{x0:.1f}" y1="{(cy - 2.5):.1f}" x2="{(x0 + 6):.1f}" '
-            f'y2="{(cy - 2.5):.1f}" stroke="{COLOR_BORDER}" stroke-width="0.6"/>'
-            f'<line x1="{x0:.1f}" y1="{(cy + 2.5):.1f}" x2="{(x0 + 6):.1f}" '
-            f'y2="{(cy + 2.5):.1f}" stroke="{COLOR_BORDER}" stroke-width="0.6"/>'
+            f'<rect x="{x0:.1f}" y="{top:.1f}" width="7" height="22" rx="3" '
+            f'fill="{color}" stroke="{COLOR_BORDER}" stroke-width="0.8"/>'
+            # two segment joints
+            f'<line x1="{x0:.1f}" y1="{cy - 3:.1f}" x2="{x0 + 7:.1f}" y2="{cy - 3:.1f}" '
+            f'stroke="{COLOR_BORDER}" stroke-width="0.8"/>'
+            f'<line x1="{x0:.1f}" y1="{cy + 4:.1f}" x2="{x0 + 7:.1f}" y2="{cy + 4:.1f}" '
+            f'stroke="{COLOR_BORDER}" stroke-width="0.8"/>'
+            # a little leaf
+            f'<path d="M {cx:.1f} {top:.1f} q 7 -4 9 -10 q -8 2 -9 8 Z" '
+            f'fill="{color}" stroke="{COLOR_BORDER}" stroke-width="0.5"/>'
         )
     return "".join(stalks)
 
 
 def _center_crak_marks(count: int, color: str) -> str:
-    """Draw `count` abstract stroke-pips (used for the Craks suit).
-
-    These are original procedural glyphs (a filled "banner" shape),
-    not a rendering of any real Chinese character font, so there is
-    no external artwork or typeface being traced or embedded.
-    """
-    layout = _PIP_LAYOUTS.get(count, _PIP_LAYOUTS[9])
-    area_x0, area_y0 = 18.0, 30.0
-    area_w, area_h = TILE_WIDTH - 36.0, TILE_HEIGHT - 60.0
-    marks: List[str] = []
-    for fx, fy in layout:
-        cx = area_x0 + fx * area_w
-        cy = area_y0 + fy * area_h
-        x0 = cx - 6.0
-        y0 = cy - 6.0
-        marks.append(
-            f'<path d="M {x0:.1f} {y0:.1f} L {(x0 + 12):.1f} {y0:.1f} '
-            f'L {(x0 + 12):.1f} {(y0 + 8):.1f} L {cx:.1f} {(y0 + 12):.1f} '
-            f'L {x0:.1f} {(y0 + 8):.1f} Z" fill="{color}" '
-            f'stroke="{COLOR_BORDER}" stroke-width="0.6"/>'
-        )
-    return "".join(marks)
+    """Authentic Character (crak) face: the Chinese numeral on top and 萬 (ten-
+    thousand) below, both in red — exactly how a real 'crak' tile reads."""
+    numeral = CJK_NUMERALS.get(count, "")
+    cx = TILE_WIDTH / 2
+    return (
+        f'<text x="{cx}" y="66" font-family="{CJK_FONT}" font-size="46" '
+        f'font-weight="700" text-anchor="middle" fill="{color}">{numeral}</text>'
+        f'<text x="{cx}" y="120" font-family="{CJK_FONT}" font-size="40" '
+        f'font-weight="700" text-anchor="middle" fill="{color}">萬</text>'
+    )
 
 
 def render_suited(suit: Suit, number: int) -> str:
@@ -253,16 +288,19 @@ def render_suited(suit: Suit, number: int) -> str:
 
 
 def render_wind(wind: Wind) -> str:
-    """Render a wind honor tile (E/S/W/N) as a colored roundel."""
+    """Render a wind honor tile: the Chinese character (東南西北) large, with the
+    English letter in the corner so beginners can still read it at a glance."""
     letter = WIND_LABELS[wind]
+    cjk = WIND_CJK[wind]
+    cx = TILE_WIDTH / 2
     body = _svg_open("wind")
     body += _tile_frame()
     body += (
-        f'<circle cx="{TILE_WIDTH / 2}" cy="{TILE_HEIGHT / 2}" r="28" '
-        f'fill="none" stroke="{COLOR_WIND}" stroke-width="4"/>'
-        f'<text x="{TILE_WIDTH / 2}" y="{TILE_HEIGHT / 2 + 12}" '
-        f'font-family="{FONT_STACK}" font-size="36" font-weight="800" '
-        f'text-anchor="middle" fill="{COLOR_WIND}">{letter}</text>'
+        f'<text x="{cx}" y="{TILE_HEIGHT / 2 + 22}" font-family="{CJK_FONT}" '
+        f'font-size="56" font-weight="700" text-anchor="middle" '
+        f'fill="{COLOR_WIND}">{cjk}</text>'
+        f'<text x="{cx}" y="30" font-family="{FONT_STACK}" font-size="17" '
+        f'font-weight="800" text-anchor="middle" fill="{COLOR_WIND}">{letter}</text>'
     )
     body += "</svg>"
     return body
@@ -271,26 +309,29 @@ def render_wind(wind: Wind) -> str:
 def render_dragon(dragon: Dragon) -> str:
     """Render a dragon honor tile (Red/Green/White).
 
-    Red and Green dragons get a filled emblem in their color; the
-    White Dragon (the traditional "soap" tile) is rendered as an
-    empty framed rectangle, matching how it is physically blank.
+    Red = 中 (red), Green = 發 (green), White = 'Soap', drawn as a clean blue
+    double frame (matching how the American white dragon is played).
     """
     color = DRAGON_COLORS[dragon]
+    cx = TILE_WIDTH / 2
     body = _svg_open("dragon")
     body += _tile_frame()
     if dragon is Dragon.WHITE:
         body += (
-            f'<rect x="26" y="{TILE_HEIGHT / 2 - 22}" width="{TILE_WIDTH - 52}" '
-            f'height="44" rx="6" fill="none" stroke="{color}" stroke-width="4"/>'
+            f'<rect x="24" y="{TILE_HEIGHT / 2 - 30}" width="{TILE_WIDTH - 48}" '
+            f'height="60" rx="8" fill="none" stroke="{color}" stroke-width="4"/>'
+            f'<rect x="31" y="{TILE_HEIGHT / 2 - 23}" width="{TILE_WIDTH - 62}" '
+            f'height="46" rx="5" fill="none" stroke="{color}" stroke-width="2"/>'
+            f'<text x="{cx}" y="{TILE_HEIGHT / 2 + 12}" font-family="{FONT_STACK}" '
+            f'font-size="20" font-weight="800" text-anchor="middle" '
+            f'fill="{color}">0</text>'
         )
     else:
+        glyph = "中" if dragon is Dragon.RED else "發"
         body += (
-            f'<rect x="26" y="{TILE_HEIGHT / 2 - 22}" width="{TILE_WIDTH - 52}" '
-            f'height="44" rx="6" fill="{color}" stroke="{COLOR_BORDER}" '
-            'stroke-width="2"/>'
-            f'<path d="M 34 {TILE_HEIGHT / 2} L {TILE_WIDTH / 2} '
-            f'{TILE_HEIGHT / 2 - 14} L {TILE_WIDTH - 34} {TILE_HEIGHT / 2} '
-            f'L {TILE_WIDTH / 2} {TILE_HEIGHT / 2 + 14} Z" fill="{COLOR_BODY}"/>'
+            f'<text x="{cx}" y="{TILE_HEIGHT / 2 + 22}" font-family="{CJK_FONT}" '
+            f'font-size="58" font-weight="700" text-anchor="middle" '
+            f'fill="{color}">{glyph}</text>'
         )
     body += "</svg>"
     return body
